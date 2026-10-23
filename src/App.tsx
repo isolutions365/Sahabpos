@@ -25,6 +25,7 @@ import {
   subscribeBankEditPermissions,
 } from './services/dbService';
 import { ensureAnonymousAuth } from './lib/firebase';
+import { isAiStudioEnvironment } from './utils/environment';
 
 export default function App() {
   // Check if current URL is a public invoice verification route (/invoice/:id)
@@ -73,6 +74,13 @@ export default function App() {
     isInventoryInitialized &&
     isCustomersInitialized &&
     isInvoicesInitialized;
+
+  // Safeguard: Automatically reset active tab to POS if manual bills or quotations are selected in a published deployment outside AI Studio
+  useEffect(() => {
+    if (!isAiStudioEnvironment() && (activeTab === 'manual_bills' || activeTab === 'manual_bill' || activeTab === 'quotations')) {
+      setActiveTab('pos');
+    }
+  }, [activeTab]);
 
   // Initialize Firestore Data & Subscriptions
   useEffect(() => {

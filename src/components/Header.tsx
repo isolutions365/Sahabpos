@@ -3,6 +3,8 @@ import { ShoppingCart, Package, Users, Receipt, Settings, ShieldCheck, Store, Lo
 import { UserRole, BusinessProfile } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
 
+import { isAiStudioEnvironment } from '../utils/environment';
+
 interface HeaderProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -53,7 +55,9 @@ export const Header: React.FC<HeaderProps> = ({
   });
   const timeStr = timeFormatter.format(currentTime);
 
-  const navItems = [
+  const isAiStudio = isAiStudioEnvironment();
+
+  const allNavItems = [
     { id: 'pos', label: 'POS / Billing', labelAr: 'نقطة البيع', icon: ShoppingCart, badge: cartCount },
     { id: 'inventory', label: 'Inventory & Stock', labelAr: 'المخزون والمنتجات', icon: Package },
     { id: 'customers', label: 'Customers (Baqaya)', labelAr: 'العملاء / الآجل', icon: Users },
@@ -63,6 +67,14 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'license_revenue', label: 'License & Revenue', labelAr: 'الترخيص والإيرادات', icon: KeyRound },
     { id: 'settings', label: 'Business Settings', labelAr: 'بيانات المنشأة والبنك', icon: Settings, badge: userRole === 'ADMIN' && pendingRequestsCount > 0 ? pendingRequestsCount : undefined },
   ];
+
+  const navItems = allNavItems.filter((item) => {
+    // Hide Manual Bills and Quotations in published builds outside AI Studio
+    if (!isAiStudio && (item.id === 'manual_bills' || item.id === 'quotations')) {
+      return false;
+    }
+    return true;
+  });
 
   const businessName = (businessProfile.businessNameAr || businessProfile.businessName)?.replace(/بقالة/g, 'تموينات');
 

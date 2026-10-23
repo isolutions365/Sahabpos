@@ -5,7 +5,7 @@ import { saveBusinessProfile, seedInitialDataIfNeeded, subscribeBankEditPermissi
 import firebaseConfig from '../../firebase-applet-config.json';
 import { TranslationManager } from './TranslationManager';
 import { MerchantBankDetailsForm } from './MerchantBankDetailsForm';
-import { isPublishedEnvironment } from '../utils/envUtils';
+import { isAiStudioEnvironment, isPublishedEnvironment } from '../utils/envUtils';
 
 interface SettingsScreenProps {
   businessProfile: BusinessProfile;
@@ -20,6 +20,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   userRole,
   currentUsername = 'cashier',
 }) => {
+  const isAiStudio = isAiStudioEnvironment();
+
   const [profile, setProfile] = useState<BusinessProfile>(() => {
     const addr = businessProfile.address === 'Riyadh, Kingdom of Saudi Arabia' || !businessProfile.address
       ? 'Khalidya Janubya AlDammam, Kingdom of Saudi Arabia'
@@ -220,7 +222,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       
       {/* Role Notice Banner */}
-      {!isAdmin && (
+      {!isAdmin && isAiStudio && (
         <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between text-xs text-amber-900 gap-3">
           <div className="flex items-center gap-2.5">
             <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
@@ -250,7 +252,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       )}
 
       {/* Permission Requests Section for Admin */}
-      {isAdmin && (
+      {isAdmin && isAiStudio && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -382,15 +384,17 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         )}
 
       {/* Merchant Bank Details Section */}
-      <MerchantBankDetailsForm
-        businessProfile={profile}
-        onProfileUpdated={(updated) => {
-          setProfile(updated);
-          onProfileUpdated(updated);
-        }}
-        userRole={userRole}
-        currentUsername={currentUsername}
-      />
+      {isAiStudio && (
+        <MerchantBankDetailsForm
+          businessProfile={profile}
+          onProfileUpdated={(updated) => {
+            setProfile(updated);
+            onProfileUpdated(updated);
+          }}
+          userRole={userRole}
+          currentUsername={currentUsername}
+        />
+      )}
 
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6 text-xs">
           
@@ -633,7 +637,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       </div>
 
       {/* Database Backup & Firebase Account Migration Card */}
-      {isAdmin && (
+      {isAdmin && isAiStudio && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
             <div className="flex items-center gap-3">
