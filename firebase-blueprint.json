@@ -1,0 +1,167 @@
+{
+  "entities": {
+    "customers": {
+      "title": "Customer (Baqaya / Credit)",
+      "description": "Customer record with Saudi/Gulf CR and Tax numbers",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "licenseNumber": { "type": "string" },
+        "crNumber": { "type": "string" },
+        "taxNumber": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "inventory": {
+      "title": "Inventory Item",
+      "description": "Products available in POS",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "size": { "type": "string" },
+        "price": { "type": "number" },
+        "hasWeightPricing": { "type": "boolean" },
+        "priceUnit": { "type": "string" },
+        "stockIn": { "type": "number" },
+        "stockOut": { "type": "number" },
+        "currentStock": { "type": "number" },
+        "vatRate": { "type": "number" },
+        "category": { "type": "string" },
+        "sku": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "price", "currentStock"]
+    },
+    "stockLogs": {
+      "title": "Stock Log",
+      "description": "Audit trail of stock in and stock out movements",
+      "properties": {
+        "id": { "type": "string" },
+        "itemId": { "type": "string" },
+        "itemName": { "type": "string" },
+        "type": { "type": "string", "enum": ["IN", "OUT"] },
+        "quantity": { "type": "number" },
+        "previousStock": { "type": "number" },
+        "newStock": { "type": "number" },
+        "reason": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["itemId", "type", "quantity"]
+    },
+    "invoices": {
+      "title": "Invoice",
+      "description": "Sales receipt or tax invoice record",
+      "properties": {
+        "id": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "customTitle": { "type": "string" },
+        "businessProfile": { "type": "object" },
+        "customer": { "type": "object" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "vatTotal": { "type": "number" },
+        "grandTotal": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "status": { "type": "string" },
+        "cashierRole": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["invoiceNumber", "items", "grandTotal"]
+    },
+    "settings": {
+      "title": "Business Profile Settings",
+      "description": "Saudi/Gulf business registration details",
+      "properties": {
+        "businessName": { "type": "string" },
+        "businessNameAr": { "type": "string" },
+        "crNumber": { "type": "string" },
+        "vatNumber": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "currency": { "type": "string" },
+        "defaultVatRate": { "type": "number" }
+      }
+    },
+    "quotations": {
+      "title": "Quotation / عرض سعر",
+      "description": "Quotation document issued for potential clients",
+      "properties": {
+        "id": { "type": "string" },
+        "quotationNumber": { "type": "string" },
+        "businessProfile": { "type": "object" },
+        "clientName": { "type": "string" },
+        "clientTaxNumber": { "type": "string" },
+        "clientCrNumber": { "type": "string" },
+        "clientPhone": { "type": "string" },
+        "date": { "type": "string" },
+        "validity": { "type": "string" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "vatTotal": { "type": "number" },
+        "grandTotal": { "type": "number" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["quotationNumber", "clientName", "items", "grandTotal"]
+    },
+    "quotationClients": {
+      "title": "Quotation Client / عميل عروض الأسعار",
+      "description": "Saved clients specifically for Quotations, completely separate from Baqaya credit customers",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "taxNumber": { "type": "string" },
+        "crNumber": { "type": "string" },
+        "phone": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "accessRequests": {
+      "title": "Access Request / طلب إذن صلاحية",
+      "description": "One-time edit requests for sensitive merchant bank details",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "permissionType": { "type": "string" },
+        "status": { "type": "string" },
+        "requestedAt": { "type": "string" },
+        "approvedBy": { "type": "string" },
+        "approvedAt": { "type": "string" },
+        "usedAt": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "permissionType", "status"]
+    },
+    "merchantSettings": {
+      "title": "Merchant Settings / إعدادات التاجر",
+      "description": "Merchant bank account details (Bank Name, Account Name, IBAN)",
+      "properties": {
+        "bankName": { "type": "string" },
+        "accountName": { "type": "string" },
+        "iban": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "updatedBy": { "type": "string" }
+      }
+    },
+    "manualBillClients": {
+      "title": "Manual Bill Client / عميل الفواتير اليدوية",
+      "description": "Saved clients specifically for Manual Bills, completely separate from Quotations and POS customers",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "taxNumber": { "type": "string" },
+        "crNumber": { "type": "string" },
+        "phone": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name"]
+    }
+  }
+}

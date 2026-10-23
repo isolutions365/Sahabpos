@@ -1,0 +1,8 @@
+{
+  "name": "Sahab POS",
+  "description": "Saudi/Gulf-style POS and Tax Invoicing app with Firestore, customer credit tracking, stock management, thermal \u0026 A4 print, and QR public verification.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

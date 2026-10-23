@@ -1,0 +1,216 @@
+@import "tailwindcss";
+
+:root {
+  --receipt-width: 58mm;
+  --row-gap: 1.5mm;
+}
+
+@media print {
+  /* 1. @page { size: 72mm auto; margin: 0; } */
+  @page {
+    size: 72mm auto;
+    margin: 0 !important;
+  }
+
+  /* 1. html, body { width: 72mm; margin: 0; padding: 0; } */
+  html, body {
+    width: 72mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: economy !important;
+    print-color-adjust: economy !important;
+  }
+
+  header, nav, button, .print\:hidden, .no-print, .printable-boundary-guide {
+    display: none !important;
+  }
+
+  /* Footer sirf ek baar render ho, duplicate hata do (suppress underlying root/modals when preview dialog prints) */
+  body:has(#print-preview-modal-root) #root,
+  body:has(#print-preview-modal-root) #printable-receipt {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Reset any modal backdrops during direct print */
+  .fixed.inset-0:not(.print\:hidden):not(.no-print) {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  /* Print mein sab background/box-shadow/filter hata do (color: #000, background: #fff) */
+  #printable-receipt,
+  #printable-receipt * {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+    color: #000000 !important;
+    border-color: #000000 !important;
+    -webkit-print-color-adjust: economy !important;
+    print-color-adjust: economy !important;
+  }
+
+  /* A.2 & B.2 Container: width: var(--receipt-width); margin: 0 auto; padding: 0 2mm; box-sizing: border-box; overflow: visible. */
+  #printable-receipt {
+    width: var(--receipt-width, 58mm) !important;
+    max-width: var(--receipt-width, 58mm) !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 auto !important;
+    padding: 0 2mm !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 11px !important;
+    font-weight: bold !important;
+    line-height: 1.6 !important;
+    color: #000000 !important;
+    -webkit-font-smoothing: none !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* A.3 Saare child elements: max-width: 100%; box-sizing: border-box. Print mein koi fixed width, min-width ya vw/px width na ho. */
+  #printable-receipt * {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    -webkit-font-smoothing: none !important;
+  }
+
+  /* A.4 Company name (English aur Arabic): text-align: center; white-space: normal; word-break: break-word; font-size 13px */
+  #printable-receipt .receipt-company-name {
+    text-align: center !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    font-size: 13px !important;
+    font-weight: bold !important;
+    padding-bottom: 1mm !important;
+    line-height: 1.6 !important;
+  }
+
+  /* B.8 Header block (company name, CR, VAT, phone, address): har line par padding-bottom 1mm. Address aur "SIMPLIFIED TAX INVOICE" ke beech 3mm gap. */
+  #printable-receipt .receipt-header-line {
+    padding-bottom: 1mm !important;
+    line-height: 1.5 !important;
+    word-break: break-word !important;
+  }
+  #printable-receipt .receipt-header-block {
+    padding-bottom: 2mm !important;
+    margin-bottom: 3mm !important;
+  }
+  #printable-receipt .receipt-title-gap {
+    padding-top: 3mm !important;
+    margin-bottom: 2mm !important;
+  }
+
+  /* A.5 & B.3 Row layout: display:flex; justify-content:space-between; align-items:center; gap:1.5mm; line-height: 1.6; padding: var(--row-gap) 0; */
+  #printable-receipt .receipt-row,
+  #printable-receipt .flex.justify-between {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 1.5mm !important;
+    width: 100% !important;
+    line-height: 1.6 !important;
+    padding: var(--row-gap, 1.5mm) 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Values (amount + SAR, invoice no, date) par white-space: nowrap; font-size 10.5px */
+  #printable-receipt .receipt-row-value,
+  #printable-receipt .whitespace-nowrap,
+  #printable-receipt .flex.justify-between > span:last-child {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    text-align: right !important;
+    font-size: 10.5px !important;
+  }
+
+  /* B.5 Separator (dashed/solid) lines par padding-top: 2mm; padding-bottom: 2mm */
+  #printable-receipt .receipt-separator,
+  #printable-receipt .border-dashed {
+    padding-top: 2mm !important;
+    padding-bottom: 2mm !important;
+  }
+
+  /* B.6 Item block: item name ke neeche "1x 3.00" wali line par padding-top: 1mm; padding-bottom: 2.5mm, taake dashed line se touch na kare. */
+  #printable-receipt .receipt-item-qty-row {
+    padding-top: 1mm !important;
+    padding-bottom: 2.5mm !important;
+  }
+
+  /* B.7 Totals (Subtotal, VAT, GRAND TOTAL): har row par padding 2mm 0. GRAND TOTAL ka font thora bara aur padding-top 3mm. */
+  #printable-receipt .receipt-total-row {
+    padding: 2mm 0 !important;
+    line-height: 1.5 !important;
+  }
+  #printable-receipt .receipt-grand-total {
+    padding: 3mm 0 2mm 0 !important;
+    font-size: 12.5px !important;
+    font-weight: 900 !important;
+    border-top: 2px solid #000000 !important;
+  }
+
+  /* B.9 Arabic text par line-height: 1.8; direction: rtl; unicode-bidi: plaintext */
+  #printable-receipt [dir="rtl"],
+  #printable-receipt .arabic-text {
+    direction: rtl !important;
+    unicode-bidi: plaintext !important;
+    line-height: 1.8 !important;
+    text-align: right !important;
+  }
+
+  /* A.7 QR code: width 34mm, display:block, margin: 2mm auto, frame/border container ke andar rahe */
+  #printable-receipt .receipt-qr-wrapper,
+  #printable-receipt .receipt-qr-wrapper img {
+    max-width: 34mm !important;
+    max-height: 34mm !important;
+    width: 34mm !important;
+    height: 34mm !important;
+    margin: 2mm auto !important;
+    display: block !important;
+  }
+
+  /* B.10 Koi negative margin ya position:absolute na ho. Merchant bank details / extra footers hidden */
+  #printable-receipt .merchant-bank-details,
+  #printable-receipt .duplicate-footer {
+    display: none !important;
+  }
+
+  /* A4 full page styling */
+  #printable-a4 {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}
+
+

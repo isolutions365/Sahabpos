@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Public read for invoices so QR code verification works for anyone
+    match /invoices/{invoiceId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Allow read/write for app collections
+    match /customers/{customerId} {
+      allow read, write: if true;
+    }
+
+    match /inventory/{itemId} {
+      allow read, write: if true;
+    }
+
+    match /stockLogs/{logId} {
+      allow read, write: if true;
+    }
+
+    match /settings/{settingId} {
+      allow read, write: if true;
+    }
+
+    match /merchantSettings/{settingId} {
+      allow read, write: if true;
+    }
+
+    match /accessRequests/{requestId} {
+      allow read, write: if true;
+    }
+
+    match /bankEditPermissions/{permissionId} {
+      allow read, write: if true;
+    }
+
+    match /quotations/{quotationId} {
+      allow read, write: if true;
+    }
+
+    match /quotationClients/{clientId} {
+      allow read, write: if true;
+    }
+
+    match /manualBills/{billId} {
+      allow read, write: if true;
+    }
+
+    match /manualBillClients/{clientId} {
+      allow read, write: if true;
+    }
+
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
