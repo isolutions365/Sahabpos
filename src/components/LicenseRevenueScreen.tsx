@@ -22,6 +22,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { BusinessProfile, InventoryItem, Invoice } from '../types';
+import { SaudiRiyalIcon } from './SaudiRiyalIcon';
 
 interface LicenseKey {
   key: string;
@@ -481,7 +482,7 @@ export const LicenseRevenueScreen: React.FC<LicenseRevenueScreenProps> = ({
               <div className="flex items-center justify-between text-slate-500">
                 <span className="text-xs font-bold uppercase tracking-wider">Total Revenue</span>
                 <div className="p-2 bg-indigo-50 text-[#4338CA] rounded-xl">
-                  <Coins className="w-4 h-4" />
+                  <SaudiRiyalIcon className="w-4.5 h-4.5" />
                 </div>
               </div>
               <div className="text-2xl font-black font-mono text-slate-900">

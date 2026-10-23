@@ -180,14 +180,18 @@ export const CustomerScreen: React.FC<CustomerScreenProps> = ({
       
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Users className="w-5 h-5 text-[#4338CA]" />
-            Customer & Credit Management (حسابات العملاء والآجل)
-          </h2>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Manage customer credit accounts (Baqaya / آجل) and record payments.
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100/80 flex items-center justify-center text-[#4338CA] shadow-2xs shrink-0">
+            <Users className="w-5.5 h-5.5 text-[#4338CA]" />
+          </div>
+          <div>
+            <h2 className="text-lg font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+              Customer & Credit Management / حسابات العملاء والآجل
+            </h2>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Manage customer credit accounts (Baqaya / آجل) and record payments.
+            </p>
+          </div>
         </div>
 
         <button

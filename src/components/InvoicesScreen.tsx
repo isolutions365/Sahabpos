@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { BusinessProfile, Invoice, UserRole } from '../types';
 import { cancelInvoice } from '../services/dbService';
+import { SaudiRiyalIcon } from './SaudiRiyalIcon';
 
 interface InvoicesScreenProps {
   invoices: Invoice[];
@@ -112,16 +113,20 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({
       {/* Top Banner & View Navigation */}
       <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <Receipt className="w-6 h-6 text-indigo-600" />
-              Tax Invoice Records & History / سجل الفواتير الضريبية
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              {isAdminOrManager
-                ? 'Manage active sales, view complete cancellation audit logs, and reprint tax receipts.'
-                : 'View your active sales records and reprint thermal receipts or A4 tax invoices.'}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100/80 flex items-center justify-center text-[#4338CA] shadow-2xs shrink-0">
+              <SaudiRiyalIcon className="w-5.5 h-5.5 text-[#4338CA]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                Tax Invoice Records & History / سجل الفواتير الضريبية
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                {isAdminOrManager
+                  ? 'Manage active sales, view complete cancellation audit logs, and reprint tax receipts.'
+                  : 'View your active sales records and reprint thermal receipts or A4 tax invoices.'}
+              </p>
+            </div>
           </div>
 
           {/* Admin Navigation Sub-Tabs */}
