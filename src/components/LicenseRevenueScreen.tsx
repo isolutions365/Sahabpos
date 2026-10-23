@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { BusinessProfile, InventoryItem, Invoice } from '../types';
 import { SaudiRiyalIcon } from './SaudiRiyalIcon';
+import { isAiStudioEnvironment } from '../utils/envUtils';
 
 interface LicenseKey {
   key: string;
@@ -48,7 +49,15 @@ export const LicenseRevenueScreen: React.FC<LicenseRevenueScreenProps> = ({
   invoices,
   userRole,
 }) => {
+  const isAiStudio = isAiStudioEnvironment();
   const [activeSubTab, setActiveSubTab] = useState<'revenue' | 'licenses'>('revenue');
+
+  // Safeguard: Ensure published builds stay on Revenue sub-tab and hide license generator
+  useEffect(() => {
+    if (!isAiStudio && activeSubTab === 'licenses') {
+      setActiveSubTab('revenue');
+    }
+  }, [isAiStudio, activeSubTab]);
 
   // Revenue filters
   const [dateRange, setDateRange] = useState<'today' | 'this_month' | 'this_year' | 'all'>('this_month');
@@ -430,17 +439,19 @@ export const LicenseRevenueScreen: React.FC<LicenseRevenueScreenProps> = ({
             <Coins className="w-4 h-4" />
             <span>Revenue & VAT / الإيرادات والضريبة</span>
           </button>
-          <button
-            onClick={() => setActiveSubTab('licenses')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              activeSubTab === 'licenses'
-                ? 'bg-[#4338CA] text-white shadow'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Key className="w-4 h-4" />
-            <span>License Keys / مفاتيح الترخيص</span>
-          </button>
+          {isAiStudio && (
+            <button
+              onClick={() => setActiveSubTab('licenses')}
+              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeSubTab === 'licenses'
+                  ? 'bg-[#4338CA] text-white shadow'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Key className="w-4 h-4" />
+              <span>License Keys / مفاتيح الترخيص</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -743,8 +754,8 @@ export const LicenseRevenueScreen: React.FC<LicenseRevenueScreenProps> = ({
             </div>
           </div>
 
-          {/* ADMIN VIEW (Gated by Admin PIN) - Hidden for Cashier */}
-          {userRole.toUpperCase() !== 'CASHIER' && (
+          {/* ADMIN VIEW (Gated by Admin PIN) - Hidden for Cashier, and hidden when published outside AI Studio */}
+          {userRole.toUpperCase() !== 'CASHIER' && isAiStudio && (
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
               <div className="flex items-center justify-between border-b pb-4">
                 <div className="flex items-center gap-3">
