@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Settings, Save, RefreshCw, CheckCircle, Building2, FileText, Phone, MapPin, ShieldAlert, Image, Trash2, Languages, KeyRound, Check, X, AlertCircle, Lock, Unlock, Printer } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Settings, Save, RefreshCw, CheckCircle, Building2, FileText, Phone, MapPin, ShieldAlert, Image, Trash2, Languages, KeyRound, Check, X, AlertCircle, Lock, Unlock, Printer, Download, Upload, Database } from 'lucide-react';
 import { BusinessProfile, UserRole, BankEditPermission } from '../types';
-import { saveBusinessProfile, seedInitialDataIfNeeded, subscribeBankEditPermissions, requestBankEditPermission, updateBankEditPermissionStatus, updatePermissionRequestStatus, saveBusinessProfileWithPermissionCheck } from '../services/dbService';
+import { saveBusinessProfile, seedInitialDataIfNeeded, subscribeBankEditPermissions, requestBankEditPermission, updateBankEditPermissionStatus, updatePermissionRequestStatus, saveBusinessProfileWithPermissionCheck, exportDatabaseBackup, importDatabaseBackup } from '../services/dbService';
+import firebaseConfig from '../../firebase-applet-config.json';
 import { TranslationManager } from './TranslationManager';
 import { MerchantBankDetailsForm } from './MerchantBankDetailsForm';
 import { isPublishedEnvironment } from '../utils/envUtils';
@@ -34,6 +35,54 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Database Backup & Account Migration State
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [backupMsg, setBackupMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExportBackup = async () => {
+    setIsExporting(true);
+    setBackupMsg(null);
+    try {
+      await exportDatabaseBackup();
+      setBackupMsg({
+        type: 'success',
+        text: 'Backup exported successfully! File downloaded. / تم تنزيل النسخة الاحتياطية بنجاح.',
+      });
+    } catch (e: any) {
+      setBackupMsg({ type: 'error', text: e.message || 'Export failed / فشل تصدير البيانات' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!confirm('Are you sure you want to import this backup? It will merge records into the database. / هل أنت متأكد من استيراد هذه النسخة الاحتياطية؟')) {
+      e.target.value = '';
+      return;
+    }
+    setIsImporting(true);
+    setBackupMsg(null);
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const res = await importDatabaseBackup(json);
+      setBackupMsg({
+        type: 'success',
+        text: `Import completed! Restored ${res.importedCount} records successfully. / تم استرجاع ${res.importedCount} سجل بنجاح.`,
+      });
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (e: any) {
+      setBackupMsg({ type: 'error', text: e.message || 'Import failed / فشل استيراد البيانات' });
+      setIsImporting(false);
+    }
+  };
 
   useEffect(() => {
     setProfile(prev => {
@@ -582,6 +631,90 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </form>
 
       </div>
+
+      {/* Database Backup & Firebase Account Migration Card */}
+      {isAdmin && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                <Database className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  Database Backup & Account Migration / النسخ الاحتياطي ونقل البيانات
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Connected Project / المشروع الحالي: <code className="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-indigo-700 font-bold">{firebaseConfig.projectId}</code>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportBackup}
+                disabled={isExporting}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50"
+              >
+                <Download className="w-4 h-4" />
+                {isExporting ? 'Exporting...' : 'Export Backup (JSON) / تصدير نسخة'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5 border border-slate-200 transition-all cursor-pointer disabled:opacity-50"
+              >
+                <Upload className="w-4 h-4" />
+                {isImporting ? 'Importing...' : 'Restore / Import JSON / استيراد واسترجاع'}
+              </button>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImportBackup}
+                className="hidden"
+              />
+            </div>
+          </div>
+
+          {backupMsg && (
+            <div
+              className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
+                backupMsg.type === 'success'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : 'bg-rose-50 border-rose-200 text-rose-900'
+              }`}
+            >
+              {backupMsg.type === 'success' ? <Check className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+              <span>{backupMsg.text}</span>
+            </div>
+          )}
+
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-2">
+            <p className="font-bold text-slate-800">
+              📌 How to switch/save database to another Firebase account (طريقة ربط حساب فايربيس آخر):
+            </p>
+            <ol className="list-decimal list-inside space-y-1 text-slate-600 leading-relaxed">
+              <li>
+                <strong>Step 1:</strong> Click <strong>"Export Backup (JSON)"</strong> above to download all current inventory, customers, invoices, and settings.
+              </li>
+              <li>
+                <strong>Step 2:</strong> In your new Firebase account, create a Web App under <em>Project Settings &gt; General &gt; Your apps</em> and copy the <code className="bg-slate-200 px-1 rounded">firebaseConfig</code> code snippet.
+              </li>
+              <li>
+                <strong>Step 3:</strong> Share the new Firebase configuration here (or paste it in chat), and the app will immediately connect to your new Firebase account.
+              </li>
+              <li>
+                <strong>Step 4:</strong> Click <strong>"Restore / Import JSON"</strong> above to restore all your existing data into the new database instantly!
+              </li>
+            </ol>
+          </div>
+        </div>
+      )}
 
       {isAdmin && <TranslationManager />}
     </div>

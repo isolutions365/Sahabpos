@@ -1,59 +1,141 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Public read for invoices so QR code verification works for anyone
+
+    // Global Schema & Data Validation Helpers
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function isNonEmptyString(str, maxLen) {
+      return str is string && str.size() > 0 && str.size() <= maxLen;
+    }
+
+    function isOptionalString(str, maxLen) {
+      return str == null || (str is string && str.size() <= maxLen);
+    }
+
+    function isPositiveNumber(num) {
+      return num is number && num >= 0;
+    }
+
+    // 1. INVOICES (Sales Receipts & ZATCA Tax Records)
+    // Invoices are official tax documents. Public read allowed for QR verification.
+    // Writes validated strictly; Updates restricted to status transitions; Deletes completely locked.
     match /invoices/{invoiceId} {
       allow read: if true;
-      allow write: if true;
+      allow create: if isValidId(invoiceId)
+        && request.resource.data.invoiceNumber is string
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.items.size() <= 200
+        && isPositiveNumber(request.resource.data.grandTotal);
+      // Tax Compliance: Invoices cannot be modified arbitrarily after issuance except for cancellation state update
+      allow update: if isValidId(invoiceId)
+        && request.resource.data.invoiceStatus in ['Active', 'Cancelled', 'ACTIVE', 'CANCELLED']
+        && request.resource.data.invoiceNumber == resource.data.invoiceNumber;
+      allow delete: if false; // Invoices are immutable tax audit logs
     }
 
-    // Allow read/write for app collections
-    match /customers/{customerId} {
-      allow read, write: if true;
-    }
-
+    // 2. INVENTORY (POS Products & Stock Levels)
     match /inventory/{itemId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if isValidId(itemId)
+        && isNonEmptyString(request.resource.data.name, 250)
+        && isPositiveNumber(request.resource.data.price);
+      allow update: if isValidId(itemId)
+        && isNonEmptyString(request.resource.data.name, 250)
+        && isPositiveNumber(request.resource.data.price);
+      allow delete: if isValidId(itemId);
     }
 
+    // 3. STOCK LOGS (Stock Movement Audit Trail)
+    // Immutable audit logs - create only, no updates or deletes.
     match /stockLogs/{logId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if isValidId(logId)
+        && request.resource.data.itemId is string
+        && request.resource.data.type in ['IN', 'OUT']
+        && isPositiveNumber(request.resource.data.quantity);
+      allow update: if false; // Audit logs cannot be modified
+      allow delete: if false; // Audit logs cannot be deleted
     }
 
+    // 4. CUSTOMERS (Baqaya Credit Accounts)
+    match /customers/{customerId} {
+      allow read: if true;
+      allow create: if isValidId(customerId)
+        && isNonEmptyString(request.resource.data.name, 250);
+      allow update: if isValidId(customerId)
+        && isNonEmptyString(request.resource.data.name, 250);
+      allow delete: if isValidId(customerId);
+    }
+
+    // 5. SETTINGS (General Corporate Info)
     match /settings/{settingId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidId(settingId);
+      allow delete: if false;
     }
 
+    // 6. MERCHANT SETTINGS (Bank Account Details)
     match /merchantSettings/{settingId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidId(settingId);
+      allow delete: if false;
     }
 
+    // 7. ACCESS REQUESTS (One-time Bank Edit Permissions)
     match /accessRequests/{requestId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidId(requestId)
+        && request.resource.data.userId is string;
+      allow delete: if isValidId(requestId);
     }
 
     match /bankEditPermissions/{permissionId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidId(permissionId);
+      allow delete: if isValidId(permissionId);
     }
 
+    // 8. QUOTATIONS & QUOTATION CLIENTS
     match /quotations/{quotationId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if isValidId(quotationId)
+        && request.resource.data.quotationNumber is string
+        && isPositiveNumber(request.resource.data.grandTotal);
+      allow update: if isValidId(quotationId);
+      allow delete: if isValidId(quotationId);
     }
 
     match /quotationClients/{clientId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidId(clientId)
+        && isNonEmptyString(request.resource.data.name, 250);
+      allow delete: if isValidId(clientId);
     }
 
+    // 9. MANUAL BILLS & MANUAL BILL CLIENTS
     match /manualBills/{billId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if isValidId(billId)
+        && request.resource.data.billNumber is string
+        && isPositiveNumber(request.resource.data.grandTotal);
+      allow update: if isValidId(billId);
+      allow delete: if isValidId(billId);
     }
 
     match /manualBillClients/{clientId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidId(clientId)
+        && isNonEmptyString(request.resource.data.name, 250);
+      allow delete: if isValidId(clientId);
     }
 
+    // Global Catch-all Default Deny for any undeclared path
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

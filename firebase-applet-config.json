@@ -1,12 +1,13 @@
 {
-  "projectId": "gen-lang-client-0446181078",
-  "appId": "1:944184590586:web:52238107ee687e825f0943",
-  "apiKey": "AIzaSyDbcjqUSDoxC3Qo1T_6OI4_c4lkvcPKHXI",
-  "authDomain": "gen-lang-client-0446181078.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-sahabpos-db",
-  "storageBucket": "gen-lang-client-0446181078.firebasestorage.app",
-  "messagingSenderId": "944184590586",
-  "measurementId": "",
+  "projectId": "sahab-pos-2ef2f",
+  "appId": "1:1011285158065:web:18316cecd93ed00af15a90",
+  "apiKey": "AIzaSyALKIasSv4pYy5wMBvGrWd5eEpUfhpc3bE",
+  "authDomain": "sahab-pos-2ef2f.firebaseapp.com",
+  "databaseURL": "https://sahab-pos-2ef2f-default-rtdb.firebaseio.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "sahab-pos-2ef2f.firebasestorage.app",
+  "messagingSenderId": "1011285158065",
+  "measurementId": "G-6ES6G8DBT8",
   "oAuthClientId": "944184590586-c731gsq4hmkd47hk815ci6d69ltmcvr7.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }

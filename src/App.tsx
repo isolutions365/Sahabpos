@@ -24,6 +24,7 @@ import {
   subscribeInvoices,
   subscribeBankEditPermissions,
 } from './services/dbService';
+import { ensureAnonymousAuth } from './lib/firebase';
 
 export default function App() {
   // Check if current URL is a public invoice verification route (/invoice/:id)
@@ -79,6 +80,7 @@ export default function App() {
 
     async function init() {
       try {
+        await ensureAnonymousAuth();
         await seedInitialDataIfNeeded();
         const profile = await getBusinessProfile();
         if (isMounted) {
@@ -86,7 +88,7 @@ export default function App() {
           setIsProfileInitialized(true);
         }
       } catch (err) {
-        console.warn('Profile initialization error:', err);
+        console.warn('Profile initialization notice:', err);
         if (isMounted) {
           setIsProfileInitialized(true);
         }
@@ -106,7 +108,7 @@ export default function App() {
       (err) => {
         if (!isMounted) return;
         setIsInventoryLoading(false);
-        setInventoryError(err.message || 'Failed to sync inventory with Firebase');
+        setInventoryError(err.message || 'Firestore rules pending update in Firebase Console');
         setIsInventoryInitialized(true);
       }
     );

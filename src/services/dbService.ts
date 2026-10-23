@@ -165,10 +165,12 @@ export async function seedInitialDataIfNeeded(): Promise<void> {
       console.warn('Notice during invoice business profile migration:', migErr);
     }
   } catch (error: any) {
-    if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
+    if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
+      console.warn('Firestore permissions notice: Database requires security rules update in Firebase Console.');
+    } else if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
       console.warn('Firestore is currently offline; initial seeding skipped until online.');
     } else {
-      console.error('Notice: Firestore initial data check error:', error?.message || error);
+      console.warn('Notice: Firestore initial data check notice:', error?.message || error);
     }
   }
 }
@@ -497,11 +499,29 @@ export function subscribeInventory(
           ...data,
         } as InventoryItem;
       });
-      console.log(`[Firestore Realtime] Received ${items.length} inventory items.`);
+      try {
+        localStorage.setItem('cached_inventory', JSON.stringify(items));
+      } catch {}
       callback(items);
     },
     (err) => {
-      console.error('[Firestore Realtime] Inventory snapshot error:', err);
+      console.warn('[Firestore Realtime] Inventory snapshot notice:', err?.message || err);
+      // Fallback: If permissions denied or offline, load from localStorage or INITIAL_INVENTORY
+      try {
+        const localSaved = localStorage.getItem('cached_inventory');
+        if (localSaved) {
+          const parsed = JSON.parse(localSaved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            callback(parsed);
+          } else {
+            callback(INITIAL_INVENTORY.map((item, idx) => ({ id: `inv-${idx + 1}`, ...item } as InventoryItem)));
+          }
+        } else {
+          callback(INITIAL_INVENTORY.map((item, idx) => ({ id: `inv-${idx + 1}`, ...item } as InventoryItem)));
+        }
+      } catch {
+        callback(INITIAL_INVENTORY.map((item, idx) => ({ id: `inv-${idx + 1}`, ...item } as InventoryItem)));
+      }
       if (onError) onError(err);
     }
   );
@@ -1157,6 +1177,133 @@ export async function saveOrUpdateManualBillClient(client: {
 
 export async function deleteManualBillClient(id: string): Promise<void> {
   await deleteDoc(doc(db, COLLECTION_MANUAL_BILL_CLIENTS, id));
+}
+
+// ---------------- Database Backup & Migration (Export / Import) ----------------
+export async function exportDatabaseBackup(): Promise<any> {
+  const [
+    settingsSnap,
+    merchantSnap,
+    inventorySnap,
+    customersSnap,
+    invoicesSnap,
+    quotationsSnap,
+    manualBillsSnap,
+  ] = await Promise.all([
+    getDocs(collection(db, COLLECTION_SETTINGS)),
+    getDocs(collection(db, COLLECTION_MERCHANT_SETTINGS)),
+    getDocs(collection(db, COLLECTION_INVENTORY)),
+    getDocs(collection(db, COLLECTION_CUSTOMERS)),
+    getDocs(collection(db, COLLECTION_INVOICES)),
+    getDocs(collection(db, COLLECTION_QUOTATIONS)),
+    getDocs(collection(db, COLLECTION_MANUAL_BILLS)),
+  ]);
+
+  const backupData = {
+    backupVersion: '1.0',
+    exportedAt: new Date().toISOString(),
+    settings: settingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    merchantSettings: merchantSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    inventory: inventorySnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    customers: customersSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    invoices: invoicesSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    quotations: quotationsSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    manualBills: manualBillsSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+  };
+
+  if (typeof window !== 'undefined') {
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sahab-pos-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  return backupData;
+}
+
+export async function importDatabaseBackup(backup: any): Promise<{ importedCount: number }> {
+  if (!backup || typeof backup !== 'object') {
+    throw new Error('Invalid backup file format / صيغة ملف النسخة الاحتياطية غير صالحة');
+  }
+
+  let count = 0;
+
+  if (Array.isArray(backup.settings)) {
+    for (const item of backup.settings) {
+      const { id, ...data } = item;
+      if (id) {
+        await setDoc(doc(db, COLLECTION_SETTINGS, id), cleanUndefined(data), { merge: true });
+        count++;
+      }
+    }
+  }
+
+  if (Array.isArray(backup.merchantSettings)) {
+    for (const item of backup.merchantSettings) {
+      const { id, ...data } = item;
+      if (id) {
+        await setDoc(doc(db, COLLECTION_MERCHANT_SETTINGS, id), cleanUndefined(data), { merge: true });
+        count++;
+      }
+    }
+  }
+
+  if (Array.isArray(backup.inventory)) {
+    for (const item of backup.inventory) {
+      const { id, ...data } = item;
+      if (id) {
+        await setDoc(doc(db, COLLECTION_INVENTORY, id), cleanUndefined(data), { merge: true });
+        count++;
+      }
+    }
+  }
+
+  if (Array.isArray(backup.customers)) {
+    for (const item of backup.customers) {
+      const { id, ...data } = item;
+      if (id) {
+        await setDoc(doc(db, COLLECTION_CUSTOMERS, id), cleanUndefined(data), { merge: true });
+        count++;
+      }
+    }
+  }
+
+  if (Array.isArray(backup.invoices)) {
+    for (const item of backup.invoices) {
+      const { id, ...data } = item;
+      if (id) {
+        await setDoc(doc(db, COLLECTION_INVOICES, id), cleanUndefined(data), { merge: true });
+        count++;
+      }
+    }
+  }
+
+  if (Array.isArray(backup.quotations)) {
+    for (const item of backup.quotations) {
+      const { id, ...data } = item;
+      if (id) {
+        await setDoc(doc(db, COLLECTION_QUOTATIONS, id), cleanUndefined(data), { merge: true });
+        count++;
+      }
+    }
+  }
+
+  if (Array.isArray(backup.manualBills)) {
+    for (const item of backup.manualBills) {
+      const { id, ...data } = item;
+      if (id) {
+        await setDoc(doc(db, COLLECTION_MANUAL_BILLS, id), cleanUndefined(data), { merge: true });
+        count++;
+      }
+    }
+  }
+
+  return { importedCount: count };
 }
 
 

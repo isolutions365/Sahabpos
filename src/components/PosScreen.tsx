@@ -17,6 +17,9 @@ import {
   Barcode,
   AlertTriangle,
   Package,
+  X,
+  Zap,
+  CheckCircle2,
 } from 'lucide-react';
 import { BusinessProfile, CartItem, Customer, InventoryItem, Invoice, UserRole } from '../types';
 import { createInvoice } from '../services/dbService';
@@ -122,10 +125,42 @@ export const PosScreen: React.FC<PosScreenProps> = ({
 
   // Barcode Scanner Integration
   const [manualBarcode, setManualBarcode] = useState('');
-  const [lastScannedItem, setLastScannedItem] = useState<{ name: string; sku: string } | null>(null);
-  const [scanStatus, setScanStatus] = useState<'success' | 'not_found' | null>(null);
+  const [lastScannedItem, setLastScannedItem] = useState<{ name: string; sku: string; price?: number } | null>(null);
+  const [scanStatus, setScanStatus] = useState<'success' | 'not_found' | 'out_of_stock' | null>(null);
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
   const scannerBuffer = useRef<string>('');
   const lastKeyTime = useRef<number>(0);
+
+  // Audio feedback for POS scanner
+  const playBeep = (type: 'success' | 'error') => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (type === 'success') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1046.5, ctx.currentTime); // C6 tone
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.12);
+      } else {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, ctx.currentTime); // Low buzz
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+      }
+    } catch {
+      // Audio playback might be restricted; ignore silently
+    }
+  };
 
   // Clean scanAndAddToCart function to avoid stale closures
   const scanAndAddToCart = (item: InventoryItem) => {
@@ -152,25 +187,73 @@ export const PosScreen: React.FC<PosScreenProps> = ({
   };
 
   const handleScanOrTypeBarcode = (barcodeVal: string): boolean => {
-    const cleanBarcode = barcodeVal.trim();
-    if (!cleanBarcode) return false;
+    const raw = barcodeVal.trim();
+    if (!raw) return false;
 
-    const foundItem = inventory.find(
-      (item) =>
-        (item.barcode && item.barcode.trim().toUpperCase() === cleanBarcode.toUpperCase()) ||
-        (item.sku && item.sku.trim().toUpperCase() === cleanBarcode.toUpperCase())
-    );
+    const cleanExact = raw.toUpperCase();
+    const cleanAlphaNum = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+    // 1. Check exact match on barcode or sku
+    let foundItem = inventory.find((item) => {
+      const bc = item.barcode?.trim().toUpperCase();
+      const sku = item.sku?.trim().toUpperCase();
+      return bc === cleanExact || sku === cleanExact;
+    });
+
+    // 2. Check alphanumeric-only normalized match (e.g. "RCE-001" vs "RCE001")
+    if (!foundItem && cleanAlphaNum) {
+      foundItem = inventory.find((item) => {
+        const bc = item.barcode?.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const sku = item.sku?.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        return (bc && bc === cleanAlphaNum) || (sku && sku === cleanAlphaNum);
+      });
+    }
+
+    // 3. Fallback match on item ID
+    if (!foundItem) {
+      foundItem = inventory.find((item) => item.id.toUpperCase() === cleanExact);
+    }
 
     if (foundItem) {
+      if (foundItem.currentStock <= 0) {
+        playBeep('error');
+        setLastScannedItem({
+          name: `${foundItem.productNameEnglish || foundItem.name} (Out of Stock / نفد المخزون)`,
+          sku: foundItem.barcode || foundItem.sku || cleanExact,
+          price: foundItem.price,
+        });
+        setScanStatus('out_of_stock');
+        setTimeout(() => {
+          setScanStatus((prev) => (prev === 'out_of_stock' ? null : prev));
+        }, 4000);
+        return false;
+      }
+
+      playBeep('success');
       scanAndAddToCart(foundItem);
-      setLastScannedItem({ name: foundItem.name, sku: foundItem.barcode || foundItem.sku || '' });
+      setLastScannedItem({
+        name: foundItem.productNameEnglish || foundItem.name,
+        sku: foundItem.barcode || foundItem.sku || cleanExact,
+        price: foundItem.price,
+      });
       setScanStatus('success');
+      setManualBarcode('');
       setTimeout(() => {
         setScanStatus((prev) => (prev === 'success' ? null : prev));
-      }, 3000);
+      }, 3500);
+
+      // Immediately refocus scanner input for rapid continuous scanning
+      setTimeout(() => {
+        barcodeInputRef.current?.focus();
+      }, 50);
+
       return true;
     } else {
-      setLastScannedItem({ name: 'Barcode not recognized / الباركود غير معروف', sku: cleanBarcode });
+      playBeep('error');
+      setLastScannedItem({
+        name: 'Barcode / SKU not found in inventory (غير مسجل في المخزون)',
+        sku: raw,
+      });
       setScanStatus('not_found');
       setTimeout(() => {
         setScanStatus((prev) => (prev === 'not_found' ? null : prev));
@@ -179,13 +262,12 @@ export const PosScreen: React.FC<PosScreenProps> = ({
     }
   };
 
-  const handleManualBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const success = handleScanOrTypeBarcode(manualBarcode);
-      if (success) {
-        setManualBarcode('');
-      }
+  const handleManualBarcodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualBarcode.trim()) return;
+    const success = handleScanOrTypeBarcode(manualBarcode);
+    if (success) {
+      setManualBarcode('');
     }
   };
 
@@ -197,8 +279,21 @@ export const PosScreen: React.FC<PosScreenProps> = ({
   weightModalItemRef.current = weightModalItem;
   const handleCheckoutRef = useRef<() => void>(() => {});
 
+  // Auto-focus barcode scanner input on mount
+  useEffect(() => {
+    barcodeInputRef.current?.focus();
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // F2 hotkey: quickly focus barcode scanner input
+      if (e.key === 'F2') {
+        e.preventDefault();
+        barcodeInputRef.current?.focus();
+        barcodeInputRef.current?.select();
+        return;
+      }
+
       // Ignore modifier keys
       if (e.ctrlKey || e.altKey || e.metaKey) {
         return;
@@ -224,7 +319,10 @@ export const PosScreen: React.FC<PosScreenProps> = ({
         const barcode = scannerBuffer.current.trim();
         if (barcode.length > 0) {
           e.preventDefault();
-          handleScanOrTypeBarcode(barcode);
+          // If barcode input was active, avoid double trigger
+          if (document.activeElement !== barcodeInputRef.current) {
+            handleScanOrTypeBarcode(barcode);
+          }
           scannerBuffer.current = '';
         } else if (!isInputFocused && !weightModalItemRef.current && cartRef.current.length > 0 && !isSubmittingRef.current) {
           e.preventDefault();
@@ -522,73 +620,170 @@ export const PosScreen: React.FC<PosScreenProps> = ({
           {/* Scanning Alerts */}
           {scanStatus && (
             <div
-              className={`p-3 rounded-xl border flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-3 duration-250 ${
+              className={`p-3 rounded-xl border flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 ${
                 scanStatus === 'success'
-                  ? 'bg-indigo-50 border-indigo-200 text-indigo-950'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                  : scanStatus === 'out_of_stock'
+                  ? 'bg-amber-50 border-amber-200 text-amber-950'
                   : 'bg-rose-50 border-rose-200 text-rose-950'
               }`}
             >
               <div className="flex items-center space-x-3 rtl:space-x-reverse">
                 <div
                   className={`p-1.5 rounded-lg ${
-                    scanStatus === 'success' ? 'bg-indigo-100 text-indigo-700' : 'bg-rose-100 text-rose-700'
+                    scanStatus === 'success'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : scanStatus === 'out_of_stock'
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-rose-100 text-rose-700'
                   }`}
                 >
                   {scanStatus === 'success' ? (
-                    <Check className="w-4 h-4" />
+                    <CheckCircle2 className="w-4 h-4" />
                   ) : (
                     <AlertTriangle className="w-4 h-4" />
                   )}
                 </div>
                 <div>
-                  <span className="text-[9px] uppercase tracking-wider font-extrabold block opacity-75">
-                    {scanStatus === 'success' ? 'Product Scanned / تم مسح المنتج بنجاح' : 'Product Not Found / لم يتم العثور على المنتج'}
+                  <span className="text-[9px] uppercase tracking-wider font-extrabold block opacity-80">
+                    {scanStatus === 'success'
+                      ? 'Product Added to Cart (+1) / تم إضافة المنتج للسلة بنجاح'
+                      : scanStatus === 'out_of_stock'
+                      ? 'Out of Stock Warning / تنبيه نفاد المخزون'
+                      : 'Product Not Found / لم يتم العثور على الباركود'}
                   </span>
-                  <span className="text-xs font-bold block leading-tight">
-                    {lastScannedItem?.name}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold block leading-tight">
+                      {lastScannedItem?.name}
+                    </span>
+                    {lastScannedItem?.price !== undefined && scanStatus === 'success' && (
+                      <span className="text-xs font-extrabold text-emerald-800">
+                        {lastScannedItem.price.toFixed(2)} SAR
+                      </span>
+                    )}
+                  </div>
                   {lastScannedItem?.sku && (
                     <span className="text-[9.5px] font-mono text-slate-500 block">
-                      SKU/Code: {lastScannedItem.sku}
+                      Code/SKU: {lastScannedItem.sku}
                     </span>
                   )}
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setScanStatus(null)}
-                className="text-slate-400 hover:text-slate-600 font-bold text-sm px-2 py-1"
+                className="text-slate-400 hover:text-slate-600 font-bold text-sm px-2 py-1 cursor-pointer"
               >
                 ✕
               </button>
             </div>
           )}
+
+          {/* Dedicated Barcode & SKU Scanner Panel */}
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-indigo-200/80 bg-gradient-to-r from-indigo-50/40 via-white to-violet-50/30 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2.5 rtl:space-x-reverse">
+                <div className="w-8 h-8 rounded-lg bg-[#4338CA] text-white flex items-center justify-center shadow-xs">
+                  <Barcode className="w-4.5 h-4.5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-sm text-slate-900">
+                      Barcode Scanner / قارئ الباركود
+                    </h3>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      Scanner Ready
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Scan with hardware barcode gun or type SKU / Barcode to instantly add to cart
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  barcodeInputRef.current?.focus();
+                  barcodeInputRef.current?.select();
+                }}
+                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors cursor-pointer"
+                title="Keyboard shortcut: Press F2"
+              >
+                <Zap className="w-3 h-3 text-indigo-600" />
+                Focus (F2)
+              </button>
+            </div>
+
+            {/* Input Form with Add Button */}
+            <form onSubmit={handleManualBarcodeSubmit} className="flex gap-2">
+              <div className="relative flex-1">
+                <Barcode className="w-4 h-4 text-[#4338CA] absolute left-3.5 top-3.5" />
+                <input
+                  ref={barcodeInputRef}
+                  type="text"
+                  placeholder="Scan barcode gun or enter SKU (e.g. 6281001112223 / RCE-001) + Enter..."
+                  value={manualBarcode}
+                  onChange={(e) => setManualBarcode(e.target.value)}
+                  className="w-full pl-11 pr-10 py-2.5 bg-white border border-indigo-200 rounded-lg text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-[#4338CA] focus:border-[#4338CA] transition-all shadow-2xs"
+                />
+                {manualBarcode && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setManualBarcode('');
+                      barcodeInputRef.current?.focus();
+                    }}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <button
+                type="submit"
+                className="px-4 py-2.5 bg-[#4338CA] hover:bg-indigo-700 active:scale-98 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition-all whitespace-nowrap cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add / إضافة</span>
+              </button>
+            </form>
+
+            {/* Quick Test SKU/Barcode Chips */}
+            {inventory.some((i) => i.barcode || i.sku) && (
+              <div className="flex items-center gap-1.5 flex-wrap pt-0.5 text-[11px]">
+                <span className="text-slate-400 font-semibold text-[10.5px]">Quick SKU Test:</span>
+                {inventory
+                  .filter((i) => i.barcode || i.sku)
+                  .slice(0, 4)
+                  .map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleScanOrTypeBarcode(item.barcode || item.sku || '')}
+                      className="px-2 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-md text-[10.5px] font-mono text-slate-700 hover:text-indigo-700 transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                    >
+                      <span className="font-bold">{item.sku || item.barcode}</span>
+                      <span className="text-slate-400 text-[9.5px]">
+                        ({item.productNameEnglish?.split(' ')[0] || item.name.split(' ')[0]})
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
           
           {/* Search & Category Filter */}
           <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                <input
-                  type="text"
-                  placeholder="Search items by name, SKU, category... / ابحث عن منتج"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#4338CA] focus:border-[#4338CA] transition-all text-slate-900"
-                />
-              </div>
-
-              {/* Barcode Focus/Input Field */}
-              <div className="relative w-full sm:w-64">
-                <Barcode className="w-4 h-4 text-[#4338CA] absolute left-3.5 top-3.5" />
-                <input
-                  type="text"
-                  placeholder="Scan or type barcode... / الباركود"
-                  value={manualBarcode}
-                  onChange={(e) => setManualBarcode(e.target.value)}
-                  onKeyDown={handleManualBarcodeKeyDown}
-                  className="w-full pl-11 pr-4 py-2.5 bg-indigo-50/50 border border-indigo-200 rounded-lg text-xs font-mono font-bold text-indigo-950 placeholder-indigo-600/60 focus:outline-none focus:ring-1 focus:ring-[#4338CA] focus:border-[#4338CA] transition-all"
-                />
-              </div>
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              <input
+                type="text"
+                placeholder="Filter catalog by name, category, or keyword... / تصفية المنتجات"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#4338CA] focus:border-[#4338CA] transition-all text-slate-900"
+              />
             </div>
 
             {/* Category Pills */}
@@ -597,7 +792,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                     selectedCategory === cat
                       ? 'bg-[#4338CA] text-white shadow'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -615,22 +810,27 @@ export const PosScreen: React.FC<PosScreenProps> = ({
               <div className="w-6 h-6 border-2 border-[#4338CA] border-t-transparent rounded-full animate-spin mx-auto"></div>
               <p className="text-xs font-bold text-slate-700">Loading live inventory from Firebase... / جاري جلب المخزون من قاعدة البيانات</p>
             </div>
-          ) : inventoryError ? (
-            <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-xs text-rose-900 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0" />
-              <div>
-                <p className="font-bold">Firebase Inventory Sync Warning</p>
-                <p className="text-[11px] text-rose-700">{inventoryError}</p>
-              </div>
-            </div>
-          ) : filteredInventory.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-xl p-8 text-center space-y-2">
-              <Package className="w-8 h-8 text-slate-300 mx-auto" />
-              <p className="text-xs font-bold text-slate-700">No inventory items found / لا يوجد منتجات في المخزون</p>
-              <p className="text-[11px] text-slate-400">Add products in the Inventory tab to start selling / أضف منتجات من شاشة المخزون</p>
-            </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="space-y-3">
+              {inventoryError && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 flex items-center justify-between gap-2 shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      Operating in offline/cached catalog mode. To enable live cloud sync for project <strong>sahab-pos-2ef2f</strong>, set Firestore rules to allow read/write in Firebase Console.
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {filteredInventory.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-xl p-8 text-center space-y-2">
+                  <Package className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p className="text-xs font-bold text-slate-700">No inventory items found / لا يوجد منتجات في المخزون</p>
+                  <p className="text-[11px] text-slate-400">Add products in the Inventory tab to start selling / أضف منتجات من شاشة المخزون</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {filteredInventory.map((item) => {
                 const isLowStock = item.currentStock <= (item.lowStockThreshold !== undefined ? item.lowStockThreshold : 5);
                 const isOutOfStock = item.currentStock <= 0;
@@ -700,6 +900,8 @@ export const PosScreen: React.FC<PosScreenProps> = ({
               })}
             </div>
           )}
+        </div>
+      )}
         </div>
 
         {/* RIGHT COLUMN: POS CART & BILLING PANEL (5 Cols on desktop) */}
