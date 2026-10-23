@@ -231,8 +231,8 @@ export default function App() {
   // Check License Expiry Status
   const getLicenseInfo = () => {
     try {
-      const keysRaw = localStorage.getItem('waseela_license_keys');
-      const deviceActRaw = localStorage.getItem('waseela_device_activation');
+      const keysRaw = localStorage.getItem('sahaab_license_keys');
+      const deviceActRaw = localStorage.getItem('sahaab_device_activation');
       if (!keysRaw || !deviceActRaw) {
         return { isExpired: false, daysUntilExpiry: 365, activeKey: null };
       }

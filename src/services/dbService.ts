@@ -108,7 +108,7 @@ function normalizeInvoiceDoc(docId: string, data: any): Invoice {
     cashierRole: data.cashierRole || 'Cashier',
     cashierName: data.cashierName,
     createdAt: data.createdAt || new Date().toISOString(),
-    publicUrl: data.publicUrl || `https://waseela-pos.web.app/invoice/${docId}`,
+    publicUrl: data.publicUrl || `https://sahaab-pos.web.app/invoice/${docId}`,
     invoiceStatus: data.invoiceStatus || 'Active',
     cancelledAt: data.cancelledAt,
     cancelledBy: data.cancelledBy,
@@ -262,7 +262,7 @@ export async function getBusinessProfile(): Promise<BusinessProfile> {
     }
 
     if (!data.publicSiteDomain || data.publicSiteDomain.trim() === '' || data.publicSiteDomain.includes('ai.studio')) {
-      data.publicSiteDomain = 'waseela-pos.web.app';
+      data.publicSiteDomain = 'sahaab-pos.web.app';
       await setDoc(docRef, cleanUndefined(data), { merge: true });
     }
 
@@ -694,7 +694,7 @@ export function formatPublicInvoiceUrl(invoiceId: string, profile?: { publicSite
   if (typeof window !== 'undefined' && window.location?.origin) {
     return `${window.location.origin}/invoice/${invoiceId}`;
   }
-  return `https://waseela-pos.web.app/invoice/${invoiceId}`;
+  return `https://sahaab-pos.web.app/invoice/${invoiceId}`;
 }
 
 export async function createInvoice(invoiceData: Omit<Invoice, 'id' | 'createdAt'>, skipStockDeduction: boolean = false): Promise<string> {
@@ -705,7 +705,7 @@ export async function createInvoice(invoiceData: Omit<Invoice, 'id' | 'createdAt
   const invoiceId = newDocRef.id;
 
   // 2. Format public site domain URL directly
-  let publicUrl = `https://waseela-pos.web.app/invoice/${invoiceId}`;
+  let publicUrl = `https://sahaab-pos.web.app/invoice/${invoiceId}`;
   if (invoiceData?.businessProfile?.publicSiteDomain?.trim()) {
     publicUrl = formatPublicInvoiceUrl(invoiceId, invoiceData.businessProfile);
   }
@@ -956,7 +956,7 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
           address: 'Saudi Arabia',
           currency: 'SAR',
           defaultVatRate: 15,
-          publicSiteDomain: 'waseela-pos.web.app',
+          publicSiteDomain: 'sahaab-pos.web.app',
         },
       };
       return dynamicInvoice;
@@ -1131,7 +1131,7 @@ export async function createManualBill(invoiceData: Omit<Invoice, 'id' | 'create
   const billId = newDocRef.id;
 
   // 2. Format public site domain URL directly
-  let publicUrl = `https://waseela-pos.web.app/invoice/${billId}`;
+  let publicUrl = `https://sahaab-pos.web.app/invoice/${billId}`;
   if (invoiceData?.businessProfile?.publicSiteDomain?.trim()) {
     publicUrl = formatPublicInvoiceUrl(billId, invoiceData.businessProfile);
   }

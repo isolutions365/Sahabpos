@@ -65,7 +65,7 @@ export const LicenseRevenueScreen: React.FC<LicenseRevenueScreenProps> = ({
   // License keys state
   const [licenseKeys, setLicenseKeys] = useState<LicenseKey[]>(() => {
     try {
-      const saved = localStorage.getItem('waseela_license_keys');
+      const saved = localStorage.getItem('sahaab_license_keys');
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.error(e);
@@ -92,7 +92,7 @@ export const LicenseRevenueScreen: React.FC<LicenseRevenueScreenProps> = ({
     activatedDate: string;
   } | null>(() => {
     try {
-      const saved = localStorage.getItem('waseela_device_activation');
+      const saved = localStorage.getItem('sahaab_device_activation');
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.error(e);
@@ -135,18 +135,18 @@ export const LicenseRevenueScreen: React.FC<LicenseRevenueScreenProps> = ({
 
   useEffect(() => {
     if (deviceActivation) {
-      localStorage.setItem('waseela_device_activation', JSON.stringify(deviceActivation));
+      localStorage.setItem('sahaab_device_activation', JSON.stringify(deviceActivation));
     } else {
-      localStorage.removeItem('waseela_device_activation');
+      localStorage.removeItem('sahaab_device_activation');
     }
   }, [deviceActivation]);
 
   // Unique device ID generator
   const getDeviceId = () => {
-    let id = localStorage.getItem('waseela_device_uuid');
+    let id = localStorage.getItem('sahaab_device_uuid');
     if (!id) {
       id = 'dev-' + Math.random().toString(36).substring(2, 10) + '-' + Date.now();
-      localStorage.setItem('waseela_device_uuid', id);
+      localStorage.setItem('sahaab_device_uuid', id);
     }
     return id;
   };

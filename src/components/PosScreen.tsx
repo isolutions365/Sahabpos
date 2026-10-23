@@ -581,7 +581,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
         ...invoiceData,
         id: newId,
         createdAt: new Date().toISOString(),
-        publicUrl: `https://waseela-pos.web.app/invoice/${newId}`,
+        publicUrl: `https://sahaab-pos.web.app/invoice/${newId}`,
       };
 
       // Clear cart

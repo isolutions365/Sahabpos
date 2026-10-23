@@ -49,8 +49,8 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
 
   const checkIsExpired = () => {
     try {
-      const keysRaw = localStorage.getItem('waseela_license_keys');
-      const deviceActRaw = localStorage.getItem('waseela_device_activation');
+      const keysRaw = localStorage.getItem('sahaab_license_keys');
+      const deviceActRaw = localStorage.getItem('sahaab_device_activation');
       if (!keysRaw || !deviceActRaw) return false;
       const keys: any[] = JSON.parse(keysRaw);
       const deviceAct = JSON.parse(deviceActRaw);

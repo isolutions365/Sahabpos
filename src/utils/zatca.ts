@@ -176,7 +176,7 @@ export async function generateZatcaQrDataUrl(
   } else if (typeof window !== 'undefined' && window.location?.origin) {
     publicInvoiceUrl = `${window.location.origin}/invoice/${invoice.id}`;
   } else {
-    publicInvoiceUrl = `https://waseela-pos.web.app/invoice/${invoice.id}`;
+    publicInvoiceUrl = `https://sahaab-pos.web.app/invoice/${invoice.id}`;
   }
 
   // Generate the official ZATCA Phase 1 Base64 TLV string as the QR payload
