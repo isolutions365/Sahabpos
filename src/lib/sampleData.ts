@@ -15,6 +15,7 @@ export const DEFAULT_BUSINESS_PROFILE: BusinessProfile = {
   iban: 'SA0380000000108012345678',
   receiptWidthMm: 58,
   printRowSpacingMm: 1.5,
+  logo: '/assets/aistudio/concept_stacked1_4c78b020.jpg',
 };
 
 export const INITIAL_CUSTOMERS: Omit<Customer, 'id'>[] = [

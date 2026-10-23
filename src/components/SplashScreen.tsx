@@ -193,19 +193,18 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ isAppReady, onFinish
             <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/20 via-[#4338CA]/30 to-slate-900/10 rounded-3xl blur-2xl opacity-60" />
 
             {/* Crisp Logo Badge Container */}
-            <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white p-2.5 shadow-[0_20px_50px_rgba(67,56,202,0.18)] border border-indigo-100/80 flex items-center justify-center">
-              <div className="w-full h-full rounded-2xl bg-gradient-to-br from-[#4338CA] via-[#3730A3] to-[#1E1B4B] flex items-center justify-center relative overflow-hidden shadow-inner">
-                {/* Subtle sheen highlight */}
-                <div className="absolute -top-12 -left-12 w-24 h-24 bg-white/20 rounded-full blur-md" />
+            <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-br from-[#064e3b] via-[#047857] to-[#065f46] p-1 shadow-[0_25px_60px_rgba(4,120,87,0.3)] border-2 border-amber-400/80 flex items-center justify-center">
+              <div className="w-full h-full rounded-[22px] bg-gradient-to-br from-[#065f46] via-[#047857] to-[#022c22] flex flex-col items-center justify-center relative overflow-hidden shadow-inner border border-amber-300/30 p-3">
+                {/* Gold Ornamental Border Frame effect */}
+                <div className="absolute inset-1.5 rounded-xl border border-amber-400/40 pointer-events-none" />
                 
-                {/* SVG I-SOLUTIONS Emblem Mark */}
-                <div className="flex flex-col items-center justify-center text-white">
-                  <span className="font-black text-3xl sm:text-4xl tracking-tighter leading-none drop-shadow-md">
-                    I<span className="text-indigo-400 font-extrabold">-</span>S
-                  </span>
-                  <span className="text-[8px] sm:text-[9px] font-mono tracking-widest font-bold opacity-90 uppercase mt-0.5">
-                    SOLUTIONS
-                  </span>
+                {/* Glowing Cart / Trolley Emblem */}
+                <div className="w-16 h-16 rounded-2xl bg-amber-400/15 border border-amber-400/50 flex items-center justify-center text-amber-300 shadow-md">
+                  <svg className="w-9 h-9 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                  </svg>
                 </div>
               </div>
             </div>
