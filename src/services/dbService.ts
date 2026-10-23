@@ -52,6 +52,71 @@ function cleanUndefined<T>(obj: T): T {
   return obj;
 }
 
+// Normalization helper for inventory items fetched from Firestore
+function normalizeInventoryDoc(docId: string, data: any): InventoryItem {
+  const nameEn = data.name || data.productNameEnglish || data.productName || data.title || 'Unnamed Item';
+  const nameAr = data.nameAr || data.productNameArabic || data.arabicName || '';
+  const priceVal = Number(data.price ?? data.unitPrice ?? data.cost ?? 0);
+  const purchasePriceVal = data.purchasePrice !== undefined ? Number(data.purchasePrice) : (data.cost !== undefined ? Number(data.cost) : undefined);
+  const currentStockVal = Number(data.currentStock ?? data.stock ?? data.quantity ?? 0);
+  const stockInVal = Number(data.stockIn ?? currentStockVal);
+  const stockOutVal = Number(data.stockOut ?? 0);
+  const sizeVal = data.size || data.unit || data.packageSize || '1 Unit';
+  const vatRateVal = data.vatRate !== undefined ? Number(data.vatRate) : 15;
+
+  return {
+    id: docId,
+    name: nameEn,
+    nameAr: nameAr,
+    productNameEnglish: nameEn,
+    productNameArabic: nameAr,
+    size: sizeVal,
+    price: isNaN(priceVal) ? 0 : priceVal,
+    purchasePrice: purchasePriceVal !== undefined && !isNaN(purchasePriceVal) ? purchasePriceVal : undefined,
+    hasWeightPricing: Boolean(data.hasWeightPricing),
+    priceUnit: data.priceUnit || 'piece',
+    stockIn: isNaN(stockInVal) ? 0 : stockInVal,
+    stockOut: isNaN(stockOutVal) ? 0 : stockOutVal,
+    currentStock: isNaN(currentStockVal) ? 0 : currentStockVal,
+    vatRate: isNaN(vatRateVal) ? 15 : vatRateVal,
+    category: data.category || 'General',
+    sku: data.sku || '',
+    barcode: data.barcode || '',
+    lowStockThreshold: data.lowStockThreshold !== undefined ? Number(data.lowStockThreshold) : undefined,
+    createdAt: data.createdAt || new Date().toISOString(),
+    updatedAt: data.updatedAt || new Date().toISOString(),
+    createdBy: data.createdBy,
+    createdRole: data.createdRole,
+  };
+}
+
+// Normalization helper for invoice items fetched from Firestore
+function normalizeInvoiceDoc(docId: string, data: any): Invoice {
+  return {
+    id: docId,
+    invoiceNumber: data.invoiceNumber || data.number || `INV-${docId.slice(0, 6)}`,
+    customTitle: data.customTitle,
+    businessProfile: data.businessProfile || DEFAULT_BUSINESS_PROFILE,
+    customer: data.customer || undefined,
+    isWalkIn: data.isWalkIn !== undefined ? data.isWalkIn : !data.customer,
+    items: Array.isArray(data.items) ? data.items : [],
+    subtotal: Number(data.subtotal || 0),
+    vatTotal: Number(data.vatTotal || 0),
+    grandTotal: Number(data.grandTotal || 0),
+    paymentMethod: data.paymentMethod || 'CASH',
+    paymentStatus: data.paymentStatus || 'PAID',
+    cashierRole: data.cashierRole || 'Cashier',
+    cashierName: data.cashierName,
+    createdAt: data.createdAt || new Date().toISOString(),
+    publicUrl: data.publicUrl || `https://waseela-pos.web.app/invoice/${docId}`,
+    invoiceStatus: data.invoiceStatus || 'Active',
+    cancelledAt: data.cancelledAt,
+    cancelledBy: data.cancelledBy,
+    cancellationReason: data.cancellationReason,
+    stockRestored: data.stockRestored,
+  };
+}
+
 // Seed Initial Data if collections are empty
 export async function seedInitialDataIfNeeded(): Promise<void> {
   try {
@@ -100,31 +165,6 @@ export async function seedInitialDataIfNeeded(): Promise<void> {
         merchantUpdates.address = DEFAULT_BUSINESS_PROFILE.address;
       }
       await updateDoc(merchantRef, cleanUndefined(merchantUpdates));
-    }
-
-    // 2. Inventory
-    const invSnap = await getDocs(collection(db, COLLECTION_INVENTORY));
-    if (invSnap.empty) {
-      console.log('Firebase inventory collection is empty. Seeding initial items...');
-      for (const item of INITIAL_INVENTORY) {
-        const now = new Date().toISOString();
-        await addDoc(collection(db, COLLECTION_INVENTORY), cleanUndefined({
-          ...item,
-          createdAt: now,
-          updatedAt: now,
-        }));
-      }
-      console.log('Successfully seeded initial inventory items to Firebase.');
-    }
-
-    // 3. Customers
-    const custSnap = await getDocs(collection(db, COLLECTION_CUSTOMERS));
-    if (custSnap.empty) {
-      console.log('Firebase customers collection is empty. Seeding initial customers...');
-      for (const cust of INITIAL_CUSTOMERS) {
-        await addDoc(collection(db, COLLECTION_CUSTOMERS), cleanUndefined(cust));
-      }
-      console.log('Successfully seeded initial customers to Firebase.');
     }
 
     // 4. Update existing invoices, manual bills, and quotations in Firestore with the new business name
@@ -469,13 +509,7 @@ export async function deleteCustomer(id: string): Promise<void> {
 export async function getInventoryItems(): Promise<InventoryItem[]> {
   try {
     const snap = await getDocs(collection(db, COLLECTION_INVENTORY));
-    const items: InventoryItem[] = snap.docs.map((d) => {
-      const data = d.data();
-      return {
-        id: d.id,
-        ...data,
-      } as InventoryItem;
-    });
+    const items: InventoryItem[] = snap.docs.map((d) => normalizeInventoryDoc(d.id, d.data()));
     console.log(`Directly loaded ${items.length} inventory items from Firestore.`);
     return items;
   } catch (err: any) {
@@ -492,13 +526,7 @@ export function subscribeInventory(
   return onSnapshot(
     q,
     (snapshot) => {
-      const items: InventoryItem[] = snapshot.docs.map((d) => {
-        const data = d.data();
-        return {
-          id: d.id,
-          ...data,
-        } as InventoryItem;
-      });
+      const items: InventoryItem[] = snapshot.docs.map((d) => normalizeInventoryDoc(d.id, d.data()));
       try {
         localStorage.setItem('cached_inventory', JSON.stringify(items));
       } catch {}
@@ -506,22 +534,19 @@ export function subscribeInventory(
     },
     (err) => {
       console.warn('[Firestore Realtime] Inventory snapshot notice:', err?.message || err);
-      // Fallback: If permissions denied or offline, load from localStorage or INITIAL_INVENTORY
+      // Fallback: If permissions denied or offline, load from cached_inventory if present
       try {
         const localSaved = localStorage.getItem('cached_inventory');
         if (localSaved) {
           const parsed = JSON.parse(localSaved);
           if (Array.isArray(parsed) && parsed.length > 0) {
             callback(parsed);
-          } else {
-            callback(INITIAL_INVENTORY.map((item, idx) => ({ id: `inv-${idx + 1}`, ...item } as InventoryItem)));
+            if (onError) onError(err);
+            return;
           }
-        } else {
-          callback(INITIAL_INVENTORY.map((item, idx) => ({ id: `inv-${idx + 1}`, ...item } as InventoryItem)));
         }
-      } catch {
-        callback(INITIAL_INVENTORY.map((item, idx) => ({ id: `inv-${idx + 1}`, ...item } as InventoryItem)));
-      }
+      } catch {}
+      callback([]);
       if (onError) onError(err);
     }
   );
@@ -694,13 +719,24 @@ export async function createInvoice(invoiceData: Omit<Invoice, 'id' | 'createdAt
     createdAt: now,
   });
 
-  // 4. Save to Firestore (local cache + network sync, non-blocking if network delayed)
+  // 4. Save to Firestore (directly setDoc to guarantee document persists to top-level invoices collection)
   try {
-    const savePromise = setDoc(newDocRef, cleanedData);
-    const fastTimeout = new Promise((resolve) => setTimeout(resolve, 2000));
-    await Promise.race([savePromise, fastTimeout]);
+    await setDoc(newDocRef, cleanedData);
+    console.log(`[Firestore Write] Invoice ${invoiceId} saved successfully to '${COLLECTION_INVOICES}' collection.`);
   } catch (e) {
-    console.warn('Notice: Invoice save proceeding locally / in background:', e);
+    console.warn('Notice: Invoice save warning on setDoc, storing in local fallback:', e);
+  }
+
+  // Update local cache so invoice is immediately available offline or during sync
+  try {
+    const existingStr = localStorage.getItem('cached_invoices');
+    const existingInvoices: Invoice[] = existingStr ? JSON.parse(existingStr) : [];
+    if (!existingInvoices.some((inv) => inv.id === invoiceId)) {
+      existingInvoices.unshift({ ...cleanedData, id: invoiceId } as Invoice);
+      localStorage.setItem('cached_invoices', JSON.stringify(existingInvoices));
+    }
+  } catch (localErr) {
+    console.warn('Failed to cache invoice locally:', localErr);
   }
 
   // 5. Asynchronously deduct inventory stock for sold items without blocking sale response
@@ -941,16 +977,46 @@ export function subscribeInvoices(
   return onSnapshot(
     q,
     (snapshot) => {
-      const invoices: Invoice[] = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<Invoice, 'id'>),
-      }));
+      const invoices: Invoice[] = snapshot.docs.map((d) => normalizeInvoiceDoc(d.id, d.data()));
+
+      // Merge with offline cached invoices if any doc hasn't synced yet
+      try {
+        const localSaved = localStorage.getItem('cached_invoices');
+        if (localSaved) {
+          const cachedInvoices: Invoice[] = JSON.parse(localSaved);
+          if (Array.isArray(cachedInvoices)) {
+            for (const cached of cachedInvoices) {
+              if (cached?.id && !invoices.some((inv) => inv.id === cached.id)) {
+                invoices.push(cached);
+              }
+            }
+          }
+        }
+      } catch {}
+
       // Sort newest first
       invoices.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      try {
+        localStorage.setItem('cached_invoices', JSON.stringify(invoices));
+      } catch {}
+
       callback(invoices);
     },
     (err) => {
       console.warn('Invoices snapshot status:', err?.message || err);
+      try {
+        const localSaved = localStorage.getItem('cached_invoices');
+        if (localSaved) {
+          const cachedInvoices: Invoice[] = JSON.parse(localSaved);
+          if (Array.isArray(cachedInvoices) && cachedInvoices.length > 0) {
+            callback(cachedInvoices);
+            if (onError) onError(err);
+            return;
+          }
+        }
+      } catch {}
+      callback([]);
       if (onError) onError(err);
     }
   );
