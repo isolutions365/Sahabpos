@@ -93,7 +93,7 @@ export const Header: React.FC<HeaderProps> = ({
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <span className="font-black text-white text-base">S</span>
+                <ShoppingCart className="w-5.5 h-5.5 text-white" />
               )}
             </div>
             <div>

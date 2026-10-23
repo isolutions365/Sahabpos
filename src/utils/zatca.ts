@@ -179,11 +179,14 @@ export async function generateZatcaQrDataUrl(
     publicInvoiceUrl = `https://waseela-pos.web.app/invoice/${invoice.id}`;
   }
 
+  // Generate the official ZATCA Phase 1 Base64 TLV string as the QR payload
+  const zatcaBase64 = generateZatcaTlvBase64(invoice, overrideProfile);
+
   const width = options.width || 180;
   const margin = options.margin !== undefined ? options.margin : 1;
 
   try {
-    return await QRCode.toDataURL(publicInvoiceUrl, {
+    return await QRCode.toDataURL(zatcaBase64, {
       width,
       margin,
       errorCorrectionLevel: 'M',
