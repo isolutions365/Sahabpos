@@ -69,7 +69,7 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
       alert('License expired. Printing and downloading invoices is blocked until license is renewed. / الترخيص منتهي. الطباعة والتنزيل معطلة حتى تجديد الترخيص.');
       return;
     }
-    setIsPreviewOpen(true);
+    window.print();
   };
 
   return (

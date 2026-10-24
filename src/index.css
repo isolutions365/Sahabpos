@@ -183,10 +183,23 @@
     text-align: right !important;
   }
 
+  /* Header and Footer Arabic text must be centered */
+  #printable-receipt .receipt-header-block,
+  #printable-receipt .receipt-header-block *,
+  #printable-receipt .receipt-header-block [dir="rtl"],
+  #printable-receipt .receipt-header-block .arabic-text,
+  #printable-receipt .receipt-company-name,
+  #printable-receipt .receipt-single-footer [dir="rtl"],
+  #printable-receipt .receipt-single-footer .arabic-text {
+    text-align: center !important;
+  }
+
   #printable-receipt .receipt-single-footer {
     padding-top: 1mm !important;
     text-align: center !important;
     clear: both !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   #printable-receipt .receipt-qr-wrapper {
@@ -195,12 +208,15 @@
     height: auto !important;
     max-width: 28mm !important;
     margin: 0.5mm auto 1mm auto !important;
-    padding: 0.5mm !important;
+    padding: 0 !important;
     background: #ffffff !important;
-    border: 1px solid #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
     box-sizing: border-box !important;
     overflow: visible !important;
     clear: both !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   #printable-receipt .receipt-qr-wrapper img {
