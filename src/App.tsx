@@ -385,7 +385,7 @@ export default function App() {
       </div>
 
       {/* Main Tab Content View */}
-      <main className="flex-1 pb-12">
+      <main className="flex-1 pb-12 print:hidden">
         {activeTab === 'pos' && (
           <PosScreen
             inventory={inventory}
@@ -490,7 +490,9 @@ export default function App() {
       )}
 
       {/* Offline Status Toast */}
-      <OfflineIndicator />
+      <div className="print:hidden">
+        <OfflineIndicator />
+      </div>
     </div>
   );
 }

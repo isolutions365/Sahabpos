@@ -26,7 +26,7 @@
     print-color-adjust: economy !important;
   }
 
-  header, nav, button, .print\:hidden, .no-print, .printable-boundary-guide {
+  header, nav, button, main, section, aside, .print\:hidden, .no-print, .printable-boundary-guide {
     display: none !important;
   }
 

@@ -273,6 +273,11 @@ export const PosScreen: React.FC<PosScreenProps> = ({
     barcodeInputRef.current?.focus();
   }, []);
 
+  // Ensure handleCheckoutRef always holds the latest handleCheckout function
+  useEffect(() => {
+    handleCheckoutRef.current = handleCheckout;
+  });
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // F2 hotkey: quickly focus barcode scanner input
@@ -307,7 +312,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
         const rawBuffer = scannerBuffer.current;
         const candidate = normalizeBarcode(rawInput) || normalizeBarcode(rawBuffer) || normalizeBarcode(manualBarcode);
 
-        // If this was a hardware scan or barcode input submission
+        // If this was a hardware scan or barcode input submission with a candidate barcode
         if (candidate.length > 0 && (isOurBarcodeInput || rawBuffer.length > 0)) {
           e.preventDefault();
           scannerBuffer.current = '';
@@ -319,11 +324,14 @@ export const PosScreen: React.FC<PosScreenProps> = ({
 
         scannerBuffer.current = '';
 
-        // If Enter was pressed outside of any inputs, and we have items in cart, proceed to checkout
-        if (!isInputFocused && !weightModalItemRef.current && cartRef.current.length > 0 && !isSubmittingRef.current && e.key === 'Enter') {
-          e.preventDefault();
-          handleCheckoutRef.current();
-          return;
+        // If Enter was pressed and candidate is empty, proceed to checkout & direct print
+        if (e.key === 'Enter' && !weightModalItemRef.current && cartRef.current.length > 0 && !isSubmittingRef.current) {
+          const isOtherInputWithText = isInputFocused && !isOurBarcodeInput && (activeEl as HTMLInputElement)?.value?.trim() !== '';
+          if (!isOtherInputWithText) {
+            e.preventDefault();
+            handleCheckoutRef.current();
+            return;
+          }
         }
       } else if (e.key === 'Delete') {
         if (!isInputFocused && !weightModalItemRef.current && cartRef.current.length > 0 && !isSubmittingRef.current) {
