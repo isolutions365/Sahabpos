@@ -50,8 +50,15 @@ export const PrintPreviewDialog: React.FC<PrintPreviewDialogProps> = ({ invoice,
       });
     });
 
-    Promise.all(promises).then(() => {
-      window.print();
+    // Safety timeout: proceed to print within max 300ms even if an image takes long to load
+    const timeoutPromise = new Promise<void>((resolve) => setTimeout(resolve, 300));
+
+    Promise.race([Promise.all(promises), timeoutPromise]).then(() => {
+      try {
+        window.print();
+      } catch (err) {
+        console.error('Error invoking window.print():', err);
+      }
     });
   };
 

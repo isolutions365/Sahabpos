@@ -504,23 +504,57 @@ function DirectPrintContainer({
   onFinish: () => void;
 }) {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [isQrReady, setIsQrReady] = useState<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
     generateZatcaQrDataUrl(invoice, { width: 180, margin: 1 }, businessProfile).then((url) => {
       if (isMounted) {
         setQrDataUrl(url || '');
-        setTimeout(() => {
-          window.print();
-          onFinish();
-        }, 120);
+        setIsQrReady(true);
       }
     });
 
     return () => {
       isMounted = false;
     };
-  }, [invoice, businessProfile, onFinish]);
+  }, [invoice, businessProfile]);
+
+  useEffect(() => {
+    if (!isQrReady) return;
+
+    let hasFinished = false;
+    const finishClean = () => {
+      if (!hasFinished) {
+        hasFinished = true;
+        onFinish();
+      }
+    };
+
+    const handleAfterPrint = () => {
+      finishClean();
+    };
+
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    // Short delay to allow browser to render QR image element in DOM before opening print dialog
+    const printTimer = setTimeout(() => {
+      try {
+        window.print();
+      } catch (err) {
+        console.error('Error invoking window.print():', err);
+      }
+      // Safety fallback: if afterprint doesn't fire (e.g. mobile webview or pop-up blocker), finish after 2.5s
+      setTimeout(() => {
+        finishClean();
+      }, 2500);
+    }, 200);
+
+    return () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+      clearTimeout(printTimer);
+    };
+  }, [isQrReady, onFinish]);
 
   return (
     <div className="hidden print:block fixed inset-0 bg-white pointer-events-none z-[9999]">

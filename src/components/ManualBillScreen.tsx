@@ -277,7 +277,11 @@ export const ManualBillScreen: React.FC<ManualBillScreenProps> = ({
   const handlePrint = () => {
     const printableA4Container = document.querySelector('#printable-a4');
     if (!printableA4Container) {
-      window.print();
+      try {
+        window.print();
+      } catch (err) {
+        console.error('Error invoking window.print():', err);
+      }
       return;
     }
 
@@ -293,8 +297,14 @@ export const ManualBillScreen: React.FC<ManualBillScreenProps> = ({
       });
     });
 
-    Promise.all(imagePromises).then(() => {
-      window.print();
+    const timeoutPromise = new Promise<void>((resolve) => setTimeout(resolve, 300));
+
+    Promise.race([Promise.all(imagePromises), timeoutPromise]).then(() => {
+      try {
+        window.print();
+      } catch (err) {
+        console.error('Error invoking window.print():', err);
+      }
     });
   };
 

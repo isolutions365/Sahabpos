@@ -55,8 +55,9 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
       if (!keysRaw || !deviceActRaw) return false;
       const keys: any[] = JSON.parse(keysRaw);
       const deviceAct = JSON.parse(deviceActRaw);
+      if (!Array.isArray(keys) || !deviceAct?.key) return false;
       const activeKey = keys.find((k) => k.key === deviceAct.key && k.status === 'active');
-      if (!activeKey || !activeKey.expiryDate) return true;
+      if (!activeKey || !activeKey.expiryDate) return false;
       return new Date(activeKey.expiryDate).getTime() < new Date().getTime();
     } catch (e) {
       return false;
