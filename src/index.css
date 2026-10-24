@@ -6,15 +6,12 @@
 }
 
 @media print {
-  /* 1. @page { size: 72mm auto; margin: 0; } */
   @page {
-    size: 72mm auto;
     margin: 0 !important;
   }
 
-  /* 1. html, body { width: 72mm; margin: 0; padding: 0; } */
   html, body {
-    width: 72mm !important;
+    width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
