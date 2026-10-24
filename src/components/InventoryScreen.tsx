@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Package,
   Languages,
+  Camera,
 } from 'lucide-react';
 import { UserRole, BusinessProfile, InventoryItem, StockLog } from '../types';
 import {
@@ -22,6 +23,8 @@ import {
   subscribeStockLogs,
 } from '../services/dbService';
 import { translateEnglishToArabic } from '../utils/translationDictionary';
+import { normalizeBarcode } from '../utils/barcodeUtils';
+import { CameraBarcodeScannerModal } from './CameraBarcodeScannerModal';
 
 interface InventoryScreenProps {
   inventory: InventoryItem[];
@@ -68,6 +71,7 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({
   const [sku, setSku] = useState('');
   const [lowStockThreshold, setLowStockThreshold] = useState('5');
   const [barcode, setBarcode] = useState('');
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
 
   const barcodeInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -149,16 +153,17 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({
     e.preventDefault();
     if (isSaving) return;
 
-    // Barcode uniqueness check
-    if (barcode.trim()) {
+    // Barcode uniqueness check & normalization
+    const cleanBarcode = normalizeBarcode(barcode);
+    if (cleanBarcode) {
       const duplicate = inventory.find(
         (item) =>
-          item.barcode?.trim().toLowerCase() === barcode.trim().toLowerCase() &&
+          normalizeBarcode(item.barcode || '').toLowerCase() === cleanBarcode.toLowerCase() &&
           item.id !== editingItem?.id
       );
       if (duplicate) {
         alert(
-          `Duplicate Barcode! / رمز باركود مكرر!\n"${barcode.trim()}" is already assigned to: ${duplicate.name}`
+          `Duplicate Barcode! / رمز باركود مكرر!\n"${cleanBarcode}" is already assigned to: ${duplicate.name}`
         );
         return;
       }
@@ -181,7 +186,7 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({
       category,
       sku,
       lowStockThreshold: parseFloat(lowStockThreshold) !== undefined ? parseFloat(lowStockThreshold) : 5,
-      barcode: barcode.trim(),
+      barcode: cleanBarcode,
       updatedAt: new Date().toISOString(),
       createdAt: editingItem?.createdAt || new Date().toISOString(),
       createdBy: editingItem?.createdBy || (userRole === 'CASHIER' ? 'Cashier' : 'Admin'),
@@ -444,7 +449,17 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({
 
             <form onSubmit={handleSaveItem} className="space-y-3 text-xs">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Barcode Number / رقم الباركود:</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-700 block">Barcode Number / رقم الباركود:</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsCameraScannerOpen(true)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Camera className="w-3 h-3 text-emerald-600" />
+                    <span>Camera Scan / مسح بالكاميرا</span>
+                  </button>
+                </div>
                 <input
                   ref={barcodeInputRef}
                   type="text"
@@ -454,7 +469,7 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({
                   className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-indigo-900 font-bold"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">
-                  * Position the cursor here and scan a barcode, or enter it manually. Must be unique.
+                  * Position the cursor here and scan a barcode, enter it manually, or click Camera Scan. Must be unique.
                 </p>
               </div>
 
@@ -781,6 +796,17 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* Camera Barcode Scanner for Inventory Item */}
+      <CameraBarcodeScannerModal
+        isOpen={isCameraScannerOpen}
+        onClose={() => setIsCameraScannerOpen(false)}
+        onScan={(scanned) => {
+          setBarcode(normalizeBarcode(scanned));
+          setIsCameraScannerOpen(false);
+          return true;
+        }}
+      />
     </div>
   );
 };

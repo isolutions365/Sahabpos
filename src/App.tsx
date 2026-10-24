@@ -19,6 +19,7 @@ import { DEFAULT_BUSINESS_PROFILE } from './lib/sampleData';
 import {
   seedInitialDataIfNeeded,
   getBusinessProfile,
+  subscribeBusinessProfile,
   subscribeInventory,
   subscribeCustomers,
   subscribeInvoices,
@@ -104,6 +105,13 @@ export default function App() {
     }
     init();
 
+    // Subscribe to real-time business profile changes
+    const unsubProfile = subscribeBusinessProfile((data) => {
+      if (!isMounted) return;
+      setBusinessProfile(data);
+      setIsProfileInitialized(true);
+    });
+
     // Subscribe to real-time collections
     const unsubInv = subscribeInventory(
       (data) => {
@@ -168,6 +176,7 @@ export default function App() {
     return () => {
       isMounted = false;
       clearTimeout(fallbackTimeout);
+      unsubProfile();
       unsubInv();
       unsubCust();
       unsubInvoices();

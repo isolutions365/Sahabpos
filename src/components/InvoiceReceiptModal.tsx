@@ -238,23 +238,23 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
                   {invoice.customTitle || 'SIMPLIFIED TAX INVOICE / فاتورة ضريبية مبسطة'}
                 </div>
                 {/* Distinct rows: Invoice #, Date, Time, Payment on separate lines */}
-                <div className="receipt-row flex justify-between items-center text-black leading-[1.6]">
+                <div className="receipt-row flex justify-between items-center text-black leading-tight py-0.5">
                   <span className="font-bold shrink-0 text-left">Invoice #:</span>
                   <span className="receipt-row-value font-black text-black font-mono text-right whitespace-nowrap shrink-0 text-[10.5px]">{invoice.invoiceNumber}</span>
                 </div>
-                <div className="receipt-row flex justify-between items-center text-black leading-[1.6]">
+                <div className="receipt-row flex justify-between items-center text-black leading-tight py-0.5">
                   <span className="font-bold shrink-0 text-left">Date:</span>
                   <span className="receipt-row-value font-bold text-black text-right whitespace-nowrap shrink-0 text-[10.5px]">
                     {new Date(invoice.createdAt).toLocaleDateString()}
                   </span>
                 </div>
-                <div className="receipt-row flex justify-between items-center text-black leading-[1.6]">
+                <div className="receipt-row flex justify-between items-center text-black leading-tight py-0.5">
                   <span className="font-bold shrink-0 text-left">Time:</span>
                   <span className="receipt-row-value font-bold text-black text-right whitespace-nowrap shrink-0 text-[10.5px]">
                     {new Date(invoice.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
                 </div>
-                <div className="receipt-row flex justify-between items-center text-black leading-[1.6]">
+                <div className="receipt-row flex justify-between items-center text-black leading-tight py-0.5">
                   <span className="font-bold shrink-0 text-left">Payment:</span>
                   <span className="receipt-row-value font-black text-black text-right whitespace-nowrap shrink-0 text-[10.5px]">{invoice.paymentMethod}</span>
                 </div>
@@ -275,15 +275,15 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
               )}
 
               {/* Line Items Table */}
-              <div className="receipt-separator border-b-2 border-dashed border-black pb-2 mb-2">
-                <div className="grid grid-cols-12 font-black text-[10.5px] uppercase border-y-2 border-black py-1 mb-1 text-black">
+              <div className="receipt-separator border-b-2 border-dashed border-black pb-1.5 mb-1.5">
+                <div className="grid grid-cols-12 font-black text-[10.5px] uppercase border-y-2 border-black py-0.5 mb-1 text-black">
                   <span className="col-span-6 text-left">Item</span>
                   <span className="col-span-2 text-center">Qty</span>
                   <span className="col-span-4 text-right">Total</span>
                 </div>
 
                 {invoice.items.map((cartItem, idx) => (
-                  <div key={idx} className="py-1 border-b border-black/40 border-dashed last:border-0 text-[11px] text-black">
+                  <div key={idx} className="py-0.5 border-b border-black/40 border-dashed last:border-0 text-[11px] text-black">
                     <div className="font-black text-black font-sans leading-tight break-words text-left">
                       {cartItem.item.productNameEnglish || cartItem.item.name}
                     </div>
@@ -292,7 +292,7 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
                         {cartItem.item.productNameArabic || cartItem.item.nameAr}
                       </div>
                     )}
-                    <div className="receipt-row receipt-item-qty-row flex justify-between items-center text-black font-bold text-[10.5px] mt-0.5 leading-[1.6]">
+                    <div className="receipt-row receipt-item-qty-row flex justify-between items-center text-black font-bold text-[10.5px] mt-0.5 leading-tight">
                       <span className="text-left">
                         {cartItem.weight
                           ? `${cartItem.weight}kg x ${cartItem.unitPrice.toFixed(2)}`
@@ -307,37 +307,37 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
               </div>
 
               {/* Financial Totals */}
-              <div className="receipt-separator border-b-2 border-dashed border-black pb-2 mb-2 text-[11px] font-sans text-black">
-                <div className="receipt-row receipt-total-row flex justify-between items-center font-bold text-black leading-[1.6]">
+              <div className="receipt-separator border-b-2 border-dashed border-black pb-1.5 mb-1.5 text-[11px] font-sans text-black">
+                <div className="receipt-row receipt-total-row flex justify-between items-center font-bold text-black leading-tight py-0.5">
                   <span className="text-left">Subtotal (غير شامل):</span>
                   <span className="receipt-row-value font-black font-mono text-right whitespace-nowrap shrink-0 text-[10.5px]">{invoice.subtotal.toFixed(2)} {activeProfile?.currency || invoice.businessProfile.currency}</span>
                 </div>
-                <div className="receipt-row receipt-total-row flex justify-between items-center font-bold text-black leading-[1.6]">
+                <div className="receipt-row receipt-total-row flex justify-between items-center font-bold text-black leading-tight py-0.5">
                   <span className="text-left">VAT ({activeProfile?.defaultVatRate ?? invoice.businessProfile.defaultVatRate ?? 15}%):</span>
                   <span className="receipt-row-value font-black font-mono text-right whitespace-nowrap shrink-0 text-[10.5px]">{invoice.vatTotal.toFixed(2)} {activeProfile?.currency || invoice.businessProfile.currency}</span>
                 </div>
-                <div className="receipt-row receipt-grand-total flex justify-between items-center font-black text-xs text-black pt-1.5 border-t-2 border-black leading-[1.6]">
+                <div className="receipt-row receipt-grand-total flex justify-between items-center font-black text-xs text-black pt-1 border-t-2 border-black leading-tight">
                   <span className="text-left">GRAND TOTAL (الإجمالي):</span>
                   <span className="receipt-row-value font-black font-mono text-right whitespace-nowrap shrink-0 text-[12.5px]">{invoice.grandTotal.toFixed(2)} {activeProfile?.currency || invoice.businessProfile.currency}</span>
                 </div>
               </div>
 
               {/* Single Print Footer */}
-              <div className="receipt-single-footer text-center pt-1 font-sans text-black">
+              <div className="receipt-single-footer text-center pt-2 font-sans text-black">
                 {qrDataUrl && (
-                  <div className="receipt-qr-wrapper inline-block p-1 bg-white border border-black rounded mb-1.5 mx-auto max-w-[34mm]">
+                  <div className="receipt-qr-wrapper inline-block p-1 bg-white border border-black rounded mx-auto mb-2.5 max-w-[32mm]">
                     <img 
                       src={qrDataUrl} 
                       alt="Invoice QR Code" 
-                      className="w-[34mm] h-[34mm] max-w-[34mm] max-h-[34mm] mx-auto block" 
+                      className="w-[30mm] h-[30mm] max-w-[30mm] max-h-[30mm] mx-auto block" 
                       style={{ imageRendering: 'pixelated' }}
                     />
                   </div>
                 )}
-                <p className="text-[10px] font-black text-black">Scan QR code to verify invoice</p>
-                <p className="arabic-text text-[9px] font-bold text-black mt-0.5">فاتورة إلكترونية معتمدة بهيئة الزكاة والجمارك</p>
-                <p className="arabic-text text-[9px] font-bold text-black mt-1">Thank you for your visit / شكراً لزيارتكم</p>
-                <div className="text-[8px] text-black mt-2 font-bold tracking-wider uppercase text-center">
+                <p className="receipt-qr-caption text-[10px] font-black text-black mt-2.5">Scan QR code to verify invoice</p>
+                <p className="receipt-footer-subtext arabic-text text-[9px] font-bold text-black mt-1">فاتورة إلكترونية معتمدة بهيئة الزكاة والجمارك</p>
+                <p className="receipt-footer-subtext arabic-text text-[9px] font-bold text-black mt-1">Thank you for your visit / شكراً لزيارتكم</p>
+                <div className="text-[8px] text-black mt-1.5 font-bold tracking-wider uppercase text-center">
                   Powered by I-Solutions
                 </div>
               </div>

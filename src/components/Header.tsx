@@ -76,7 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
     return true;
   });
 
-  const businessName = (businessProfile.businessNameAr || businessProfile.businessName)?.replace(/بقالة/g, 'تموينات');
+  const arabicBusinessName = (businessProfile.businessNameAr || businessProfile.businessName || 'سحاب المدن التجارية').replace(/بقالة/g, 'تموينات');
 
   return (
     <header className="bg-[#4338CA] text-white border-b border-[#3730A3] sticky top-0 z-30 shadow-md">
@@ -98,8 +98,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div>
               <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                <span className="font-bold text-base sm:text-lg tracking-tight text-white uppercase">
-                  {businessName || 'Sahaab POS'}
+                <span className="font-bold text-base sm:text-lg tracking-tight text-white">
+                  {arabicBusinessName}
                 </span>
                 <span className="bg-white/10 border border-white/20 text-indigo-100 text-[10px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3" />

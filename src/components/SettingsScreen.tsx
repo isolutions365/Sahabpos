@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Settings, Save, RefreshCw, CheckCircle, Building2, FileText, Phone, MapPin, ShieldAlert, Image, Trash2, Languages, KeyRound, Check, X, AlertCircle, Lock, Unlock, Printer, Download, Upload, Database } from 'lucide-react';
 import { BusinessProfile, UserRole, BankEditPermission } from '../types';
 import { saveBusinessProfile, seedInitialDataIfNeeded, subscribeBankEditPermissions, requestBankEditPermission, updateBankEditPermissionStatus, updatePermissionRequestStatus, saveBusinessProfileWithPermissionCheck, exportDatabaseBackup, importDatabaseBackup } from '../services/dbService';
+import { DEFAULT_BUSINESS_PROFILE } from '../lib/sampleData';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { TranslationManager } from './TranslationManager';
 import { MerchantBankDetailsForm } from './MerchantBankDetailsForm';
@@ -109,7 +110,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     document.documentElement.style.setProperty('--row-gap', `${val}mm`);
   };
 
-  // Environment-based freeze: Strictly frozen only when published, editable in development
+  // Environment-based freeze: Strictly locked after publish, editable in AI Studio
   const isFrozen = isPublishedEnvironment();
 
   // Bank edit permissions state
@@ -140,10 +141,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     document.documentElement.style.setProperty('--row-gap', `${printRowSpacing}mm`);
 
     if (isFrozen) {
-      setIsSaved(true);
-      setTimeout(() => setIsSaved(false), 3000);
+      alert('Corporate settings are locked after publishing. To update business details, edit via AI Studio. / تم قفل إعدادات المنشأة بعد النشر. يتم التعديل حصراً من خلال AI Studio.');
       return;
     }
+
     setIsSaving(true);
     setErrorMessage(null);
     try {
@@ -400,11 +401,38 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           
           {/* Section 2: General Corporate Profile */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <Building2 className="w-4.5 h-4.5 text-indigo-600" />
                 <h3 className="font-bold text-slate-900 text-sm">General Corporate Info (بيانات المنشأة العامة)</h3>
               </div>
+              {isFrozen ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                  <Lock className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Locked after publish / مقفل بعد النشر (تعديل عبر AI Studio فقط)</span>
+                </span>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    <Unlock className="w-3 h-3 text-emerald-600" />
+                    <span>AI Studio Mode (Editable / قابل للتعديل)</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfile({
+                        ...DEFAULT_BUSINESS_PROFILE,
+                        receiptWidthMm: receiptWidth,
+                        printRowSpacingMm: printRowSpacing,
+                      });
+                    }}
+                    className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-[#4338CA] border border-indigo-200 rounded-lg text-xs font-bold transition cursor-pointer"
+                    title="Load default business profile from AI Studio code"
+                  >
+                    Load AI Studio Defaults / استيراد الافتراضي
+                  </button>
+                </div>
+              )}
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -623,14 +651,21 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               </button>
             )}
 
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="ml-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-xl shadow-lg flex items-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              {isSaving ? 'Saving...' : 'Save Settings / حفظ التغييرات'}
-            </button>
+            {isFrozen ? (
+              <div className="ml-auto flex items-center gap-2 text-xs font-bold text-amber-800 bg-amber-50 px-4 py-2.5 rounded-xl border border-amber-200">
+                <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Settings Locked after publish / مقفل بعد النشر (تعديل عبر AI Studio فقط)</span>
+              </div>
+            ) : (
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="ml-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-xl shadow-lg flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                {isSaving ? 'Saving...' : 'Save Settings / حفظ التغييرات'}
+              </button>
+            )}
           </div>
         </form>
 

@@ -17,6 +17,7 @@ import { db } from '../lib/firebase';
 import { BusinessProfile, Customer, InventoryItem, Invoice, StockLog, Quotation, QuotationItem, QuotationClient, ManualBillClient, BankEditPermission } from '../types';
 import { DEFAULT_BUSINESS_PROFILE, INITIAL_CUSTOMERS, INITIAL_INVENTORY } from '../lib/sampleData';
 import { decodeZatcaTlvBase64 } from '../utils/zatca';
+import { isAiStudioEnvironment } from '../utils/envUtils';
 
 // Collections
 const COLLECTION_CUSTOMERS = 'customers';
@@ -127,14 +128,37 @@ export async function seedInitialDataIfNeeded(): Promise<void> {
       await setDoc(profileRef, cleanUndefined(DEFAULT_BUSINESS_PROFILE));
     } else {
       const snapData = profileSnap.data();
-      const profileUpdates: any = {
-        businessName: DEFAULT_BUSINESS_PROFILE.businessName,
-        businessNameAr: DEFAULT_BUSINESS_PROFILE.businessNameAr,
-      };
+      const profileUpdates: any = {};
       if (!snapData?.address || snapData?.address === 'Riyadh, Kingdom of Saudi Arabia') {
         profileUpdates.address = DEFAULT_BUSINESS_PROFILE.address;
       }
-      await updateDoc(profileRef, cleanUndefined(profileUpdates));
+      if (snapData?.businessNameAr && snapData.businessNameAr.includes('بقالة')) {
+        profileUpdates.businessNameAr = snapData.businessNameAr.replace(/بقالة/g, 'تموينات');
+      }
+
+      // When running in AI Studio, automatically sync updates made to DEFAULT_BUSINESS_PROFILE
+      if (isAiStudioEnvironment()) {
+        const isDefaultDifferent =
+          (DEFAULT_BUSINESS_PROFILE.businessName && DEFAULT_BUSINESS_PROFILE.businessName !== snapData.businessName) ||
+          (DEFAULT_BUSINESS_PROFILE.businessNameAr && DEFAULT_BUSINESS_PROFILE.businessNameAr !== snapData.businessNameAr) ||
+          (DEFAULT_BUSINESS_PROFILE.crNumber && DEFAULT_BUSINESS_PROFILE.crNumber !== snapData.crNumber) ||
+          (DEFAULT_BUSINESS_PROFILE.vatNumber && DEFAULT_BUSINESS_PROFILE.vatNumber !== snapData.vatNumber);
+
+        if (isDefaultDifferent) {
+          Object.assign(profileUpdates, {
+            businessName: DEFAULT_BUSINESS_PROFILE.businessName,
+            businessNameAr: DEFAULT_BUSINESS_PROFILE.businessNameAr,
+            crNumber: DEFAULT_BUSINESS_PROFILE.crNumber,
+            vatNumber: DEFAULT_BUSINESS_PROFILE.vatNumber,
+            address: DEFAULT_BUSINESS_PROFILE.address || snapData.address,
+            phone: DEFAULT_BUSINESS_PROFILE.phone || snapData.phone,
+          });
+        }
+      }
+
+      if (Object.keys(profileUpdates).length > 0) {
+        await updateDoc(profileRef, cleanUndefined(profileUpdates));
+      }
     }
 
     const merchantRef = doc(db, COLLECTION_MERCHANT_SETTINGS, 'profile');
@@ -155,54 +179,6 @@ export async function seedInitialDataIfNeeded(): Promise<void> {
           updatedAt: new Date().toISOString(),
         })
       );
-    } else {
-      const mData = merchantSnap.data();
-      const merchantUpdates: any = {
-        businessName: DEFAULT_BUSINESS_PROFILE.businessName,
-        businessNameAr: DEFAULT_BUSINESS_PROFILE.businessNameAr,
-      };
-      if (!mData?.address || mData?.address === 'Riyadh, Kingdom of Saudi Arabia') {
-        merchantUpdates.address = DEFAULT_BUSINESS_PROFILE.address;
-      }
-      await updateDoc(merchantRef, cleanUndefined(merchantUpdates));
-    }
-
-    // 4. Update existing invoices, manual bills, and quotations in Firestore with the new business name
-    try {
-      const invQuerySnap = await getDocs(collection(db, COLLECTION_INVOICES));
-      for (const invDoc of invQuerySnap.docs) {
-        const invData = invDoc.data();
-        if (invData && invData.businessProfile) {
-          await updateDoc(invDoc.ref, {
-            'businessProfile.businessName': DEFAULT_BUSINESS_PROFILE.businessName,
-            'businessProfile.businessNameAr': DEFAULT_BUSINESS_PROFILE.businessNameAr,
-          });
-        }
-      }
-
-      const mbQuerySnap = await getDocs(collection(db, COLLECTION_MANUAL_BILLS));
-      for (const mbDoc of mbQuerySnap.docs) {
-        const mbData = mbDoc.data();
-        if (mbData && mbData.businessProfile) {
-          await updateDoc(mbDoc.ref, {
-            'businessProfile.businessName': DEFAULT_BUSINESS_PROFILE.businessName,
-            'businessProfile.businessNameAr': DEFAULT_BUSINESS_PROFILE.businessNameAr,
-          });
-        }
-      }
-
-      const quotQuerySnap = await getDocs(collection(db, COLLECTION_QUOTATIONS));
-      for (const qDoc of quotQuerySnap.docs) {
-        const qData = qDoc.data();
-        if (qData && qData.businessProfile) {
-          await updateDoc(qDoc.ref, {
-            'businessProfile.businessName': DEFAULT_BUSINESS_PROFILE.businessName,
-            'businessProfile.businessNameAr': DEFAULT_BUSINESS_PROFILE.businessNameAr,
-          });
-        }
-      }
-    } catch (migErr) {
-      console.warn('Notice during invoice business profile migration:', migErr);
     }
   } catch (error: any) {
     if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
@@ -275,6 +251,27 @@ export async function getBusinessProfile(): Promise<BusinessProfile> {
     }
     return DEFAULT_BUSINESS_PROFILE;
   }
+}
+
+export function subscribeBusinessProfile(callback: (profile: BusinessProfile) => void): () => void {
+  const docRef = doc(db, COLLECTION_SETTINGS, 'business');
+  return onSnapshot(
+    docRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data() as BusinessProfile;
+        callback({
+          ...DEFAULT_BUSINESS_PROFILE,
+          ...data,
+        });
+      } else {
+        callback(DEFAULT_BUSINESS_PROFILE);
+      }
+    },
+    (err) => {
+      console.warn('Real-time business profile subscription notice:', err?.message || err);
+    }
+  );
 }
 
 export async function saveBusinessProfile(profile: BusinessProfile): Promise<void> {

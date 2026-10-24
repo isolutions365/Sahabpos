@@ -20,9 +20,12 @@ import {
   X,
   Zap,
   CheckCircle2,
+  Camera,
 } from 'lucide-react';
 import { BusinessProfile, CartItem, Customer, InventoryItem, Invoice, UserRole } from '../types';
 import { createInvoice } from '../services/dbService';
+import { normalizeBarcode, findItemByBarcodeOrSku } from '../utils/barcodeUtils';
+import { CameraBarcodeScannerModal } from './CameraBarcodeScannerModal';
 
 interface PosScreenProps {
   inventory: InventoryItem[];
@@ -125,6 +128,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
 
   // Barcode Scanner Integration
   const [manualBarcode, setManualBarcode] = useState('');
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [lastScannedItem, setLastScannedItem] = useState<{ name: string; sku: string; price?: number } | null>(null);
   const [scanStatus, setScanStatus] = useState<'success' | 'not_found' | 'out_of_stock' | null>(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
@@ -187,39 +191,18 @@ export const PosScreen: React.FC<PosScreenProps> = ({
   };
 
   const handleScanOrTypeBarcode = (barcodeVal: string): boolean => {
-    const raw = barcodeVal.trim();
-    if (!raw) return false;
+    const clean = normalizeBarcode(barcodeVal);
+    if (!clean) return false;
 
-    const cleanExact = raw.toUpperCase();
-    const cleanAlphaNum = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
-
-    // 1. Check exact match on barcode or sku
-    let foundItem = inventory.find((item) => {
-      const bc = item.barcode?.trim().toUpperCase();
-      const sku = item.sku?.trim().toUpperCase();
-      return bc === cleanExact || sku === cleanExact;
-    });
-
-    // 2. Check alphanumeric-only normalized match (e.g. "RCE-001" vs "RCE001")
-    if (!foundItem && cleanAlphaNum) {
-      foundItem = inventory.find((item) => {
-        const bc = item.barcode?.toUpperCase().replace(/[^A-Z0-9]/g, '');
-        const sku = item.sku?.toUpperCase().replace(/[^A-Z0-9]/g, '');
-        return (bc && bc === cleanAlphaNum) || (sku && sku === cleanAlphaNum);
-      });
-    }
-
-    // 3. Fallback match on item ID
-    if (!foundItem) {
-      foundItem = inventory.find((item) => item.id.toUpperCase() === cleanExact);
-    }
+    // Use robust multi-strategy finder (handles Arabic numerals, UPC-A vs EAN-13, leading zeros, etc.)
+    const foundItem = findItemByBarcodeOrSku(inventory, clean);
 
     if (foundItem) {
       if (foundItem.currentStock <= 0) {
         playBeep('error');
         setLastScannedItem({
           name: `${foundItem.productNameEnglish || foundItem.name} (Out of Stock / نفد المخزون)`,
-          sku: foundItem.barcode || foundItem.sku || cleanExact,
+          sku: foundItem.barcode || foundItem.sku || clean,
           price: foundItem.price,
         });
         setScanStatus('out_of_stock');
@@ -233,11 +216,14 @@ export const PosScreen: React.FC<PosScreenProps> = ({
       scanAndAddToCart(foundItem);
       setLastScannedItem({
         name: foundItem.productNameEnglish || foundItem.name,
-        sku: foundItem.barcode || foundItem.sku || cleanExact,
+        sku: foundItem.barcode || foundItem.sku || clean,
         price: foundItem.price,
       });
       setScanStatus('success');
       setManualBarcode('');
+      if (barcodeInputRef.current) {
+        barcodeInputRef.current.value = '';
+      }
       setTimeout(() => {
         setScanStatus((prev) => (prev === 'success' ? null : prev));
       }, 3500);
@@ -252,7 +238,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
       playBeep('error');
       setLastScannedItem({
         name: 'Barcode / SKU not found in inventory (غير مسجل في المخزون)',
-        sku: raw,
+        sku: clean,
       });
       setScanStatus('not_found');
       setTimeout(() => {
@@ -264,10 +250,13 @@ export const PosScreen: React.FC<PosScreenProps> = ({
 
   const handleManualBarcodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualBarcode.trim()) return;
-    const success = handleScanOrTypeBarcode(manualBarcode);
+    const candidate = barcodeInputRef.current?.value || manualBarcode;
+    const clean = normalizeBarcode(candidate);
+    if (!clean) return;
+    const success = handleScanOrTypeBarcode(clean);
     if (success) {
       setManualBarcode('');
+      if (barcodeInputRef.current) barcodeInputRef.current.value = '';
     }
   };
 
@@ -305,47 +294,52 @@ export const PosScreen: React.FC<PosScreenProps> = ({
         activeEl.tagName === 'TEXTAREA' || 
         activeEl.getAttribute('contenteditable') === 'true'
       );
+      const isOurBarcodeInput = activeEl === barcodeInputRef.current;
 
       const now = Date.now();
       const diff = now - lastKeyTime.current;
       lastKeyTime.current = now;
 
-      // Reset buffer if delay since last keypress is too long
-      if (diff > 1000) {
-        scannerBuffer.current = '';
-      }
+      // When Enter or Tab is pressed (hardware barcode scanners emit Enter or Tab)
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        // Collect candidate barcode from all possible sources
+        const rawInput = barcodeInputRef.current ? barcodeInputRef.current.value : '';
+        const rawBuffer = scannerBuffer.current;
+        const candidate = normalizeBarcode(rawInput) || normalizeBarcode(rawBuffer) || normalizeBarcode(manualBarcode);
 
-      if (e.key === 'Enter') {
-        const barcode = scannerBuffer.current.trim();
-        if (barcode.length > 0) {
+        // If this was a hardware scan or barcode input submission
+        if (candidate.length > 0 && (isOurBarcodeInput || rawBuffer.length > 0)) {
           e.preventDefault();
-          // If barcode input was active, avoid double trigger
-          if (document.activeElement !== barcodeInputRef.current) {
-            handleScanOrTypeBarcode(barcode);
-          }
           scannerBuffer.current = '';
-        } else if (!isInputFocused && !weightModalItemRef.current && cartRef.current.length > 0 && !isSubmittingRef.current) {
+          if (barcodeInputRef.current) barcodeInputRef.current.value = '';
+          setManualBarcode('');
+          handleScanOrTypeBarcode(candidate);
+          return;
+        }
+
+        scannerBuffer.current = '';
+
+        // If Enter was pressed outside of any inputs, and we have items in cart, proceed to checkout
+        if (!isInputFocused && !weightModalItemRef.current && cartRef.current.length > 0 && !isSubmittingRef.current && e.key === 'Enter') {
           e.preventDefault();
           handleCheckoutRef.current();
+          return;
         }
       } else if (e.key === 'Delete') {
         if (!isInputFocused && !weightModalItemRef.current && cartRef.current.length > 0 && !isSubmittingRef.current) {
           e.preventDefault();
           setCart([]);
+          return;
         }
       } else if (e.key.length === 1) {
-        // Collect alphanumeric, space, hyphens or dashes
-        const isAlphanumericOrSymbol = /^[a-zA-Z0-9\-_ ]$/.test(e.key);
-        if (isAlphanumericOrSymbol) {
-          if (isInputFocused) {
-            // Speed constraint: USB scanner types key events almost instantly (diff <= 50ms)
-            if (diff <= 50) {
-              scannerBuffer.current += e.key;
-            } else {
-              scannerBuffer.current = ''; // Reset buffer on manual typing
-            }
+        // Normalize Arabic digits or printable characters
+        const char = normalizeBarcode(e.key);
+        if (char && /^[a-zA-Z0-9\-_ /]$/.test(char)) {
+          // If interval between keystrokes is more than 300ms, start a fresh scan buffer
+          if (diff > 300) {
+            scannerBuffer.current = char;
           } else {
-            scannerBuffer.current += e.key;
+            scannerBuffer.current += char;
           }
         }
       }
@@ -355,7 +349,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [inventory, businessProfile]);
+  }, [inventory, businessProfile, manualBarcode]);
 
   // Categories list
   const categories = ['ALL', ...Array.from(new Set(inventory.map((i) => i.category || 'General')))];
@@ -701,18 +695,29 @@ export const PosScreen: React.FC<PosScreenProps> = ({
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  barcodeInputRef.current?.focus();
-                  barcodeInputRef.current?.select();
-                }}
-                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors cursor-pointer"
-                title="Keyboard shortcut: Press F2"
-              >
-                <Zap className="w-3 h-3 text-indigo-600" />
-                Focus (F2)
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCameraModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-98 rounded-lg shadow-sm transition-all cursor-pointer"
+                  title="Scan with Mobile Camera / مسح بالكاميرا"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Camera Scan / مسح بالكاميرا</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    barcodeInputRef.current?.focus();
+                    barcodeInputRef.current?.select();
+                  }}
+                  className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors cursor-pointer"
+                  title="Keyboard shortcut: Press F2"
+                >
+                  <Zap className="w-3 h-3 text-indigo-600" />
+                  Focus (F2)
+                </button>
+              </div>
             </div>
 
             {/* Input Form with Add Button */}
@@ -1396,6 +1401,13 @@ export const PosScreen: React.FC<PosScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* Camera Barcode Scanner Modal */}
+      <CameraBarcodeScannerModal
+        isOpen={isCameraModalOpen}
+        onClose={() => setIsCameraModalOpen(false)}
+        onScan={handleScanOrTypeBarcode}
+      />
     </div>
   );
 };
