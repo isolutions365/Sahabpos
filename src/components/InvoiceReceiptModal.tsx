@@ -12,10 +12,9 @@ interface InvoiceReceiptModalProps {
   onClose: () => void;
   businessProfile?: BusinessProfile;
   defaultFormat?: PrintFormat;
-  autoPrint?: boolean;
 }
 
-export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoice, onClose, businessProfile, defaultFormat = 'THERMAL_80MM', autoPrint = false }) => {
+export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoice, onClose, businessProfile, defaultFormat = 'THERMAL_80MM' }) => {
   const isManualBill = invoice.invoiceNumber.startsWith('INV-M-');
   const [printFormat, setPrintFormat] = useState<PrintFormat>(isManualBill ? 'A4_FULL' : 'THERMAL_80MM');
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
@@ -49,21 +48,6 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
     };
   }, [invoice, activeProfile]);
 
-  // Auto-print when autoPrint is true and QR code is ready
-  useEffect(() => {
-    if (!autoPrint || !qrDataUrl) return;
-
-    const timer = setTimeout(() => {
-      try {
-        window.print();
-      } catch (err) {
-        console.error('Error invoking auto window.print():', err);
-      }
-    }, 350);
-
-    return () => clearTimeout(timer);
-  }, [autoPrint, qrDataUrl]);
-
   const checkIsExpired = () => {
     try {
       const keysRaw = localStorage.getItem('sahaab_license_keys');
@@ -85,28 +69,7 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
       alert('License expired. Printing and downloading invoices is blocked until license is renewed. / الترخيص منتهي. الطباعة والتنزيل معطلة حتى تجديد الترخيص.');
       return;
     }
-
-    const images = document.querySelectorAll('#printable-receipt img, #printable-a4 img');
-    const promises = Array.from(images).map((img) => {
-      const htmlImg = img as HTMLImageElement;
-      if (htmlImg.complete) {
-        return Promise.resolve();
-      }
-      return new Promise<void>((resolve) => {
-        htmlImg.onload = () => resolve();
-        htmlImg.onerror = () => resolve();
-      });
-    });
-
-    const timeoutPromise = new Promise<void>((resolve) => setTimeout(resolve, 250));
-
-    Promise.race([Promise.all(promises), timeoutPromise]).then(() => {
-      try {
-        window.print();
-      } catch (err) {
-        console.error('Error invoking window.print():', err);
-      }
-    });
+    setIsPreviewOpen(true);
   };
 
   return (

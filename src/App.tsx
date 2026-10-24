@@ -394,7 +394,9 @@ export default function App() {
             userRole={userRole}
             isLoadingInventory={isInventoryLoading}
             inventoryError={inventoryError}
-            onInvoiceCreated={(createdInvoice) => setActiveInvoiceModal(createdInvoice)}
+            onInvoiceCreated={(createdInvoice) => {
+              setDirectPrintInvoice(createdInvoice);
+            }}
             onNavigateToCustomers={() => setActiveTab('customers')}
           />
         )}
@@ -469,13 +471,12 @@ export default function App() {
         )}
       </main>
 
-      {/* Invoice Receipt Modal Popup */}
+      {/* Invoice Receipt Modal Popup for viewing past invoices from history */}
       {activeInvoiceModal && (
         <InvoiceReceiptModal
           invoice={activeInvoiceModal}
           onClose={() => setActiveInvoiceModal(null)}
           businessProfile={businessProfile}
-          autoPrint={true}
         />
       )}
 
