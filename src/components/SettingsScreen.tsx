@@ -21,7 +21,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   userRole,
   currentUsername = 'cashier',
 }) => {
-  const isAiStudio = isAiStudioEnvironment();
+  const isRealAiStudio = isAiStudioEnvironment();
+  const [simulatePublished, setSimulatePublished] = useState<boolean>(() => {
+    return localStorage.getItem('sahaab_simulate_published') === 'true';
+  });
+
+  const isAiStudio = isRealAiStudio && !simulatePublished;
+  const isFrozen = isPublishedEnvironment() || simulatePublished;
 
   const [profile, setProfile] = useState<BusinessProfile>(() => {
     const addr = businessProfile.address === 'Riyadh, Kingdom of Saudi Arabia' || !businessProfile.address
@@ -110,9 +116,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     document.documentElement.style.setProperty('--row-gap', `${val}mm`);
   };
 
-  // Environment-based freeze: Strictly locked after publish, editable in AI Studio
-  const isFrozen = isPublishedEnvironment();
-
   // Bank edit permissions state
   const [permissions, setPermissions] = useState<BankEditPermission[]>([]);
 
@@ -141,9 +144,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     document.documentElement.style.setProperty('--row-gap', `${printRowSpacing}mm`);
 
     if (isFrozen) {
-      alert('Corporate settings are locked after publishing. To update business details, edit via AI Studio. / تم قفل إعدادات المنشأة بعد النشر. يتم التعديل حصراً من خلال AI Studio.');
+      alert('Corporate settings are locked and verified. / بيانات المنشأة معتمدة ومقفلة ولا يمكن تعديلها.');
       return;
     }
+
 
     setIsSaving(true);
     setErrorMessage(null);
@@ -222,7 +226,50 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       
+      {/* AI Studio Developer Environment Bar - ONLY shown in real AI Studio dev mode, never in published app */}
+      {isRealAiStudio && (
+        <div className="bg-indigo-50/80 border border-indigo-200 rounded-2xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <div>
+              <span className="font-extrabold text-indigo-950 block">AI Studio Developer Mode</span>
+              <span className="text-indigo-700 text-[11px]">
+                {simulatePublished
+                  ? 'Currently Previewing: Published User View (Settings are strictly locked for end-users)'
+                  : 'Currently Active: AI Studio Edit Mode (Corporate info is editable and syncs to database)'}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !simulatePublished;
+              setSimulatePublished(next);
+              localStorage.setItem('sahaab_simulate_published', String(next));
+            }}
+            className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm ${
+              simulatePublished
+                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                : 'bg-white text-indigo-900 border border-indigo-300 hover:bg-indigo-100'
+            }`}
+          >
+            {simulatePublished ? (
+              <>
+                <Unlock className="w-3.5 h-3.5 text-white" />
+                <span>Return to AI Studio Edit Mode / العودة لوضع التعديل</span>
+              </>
+            ) : (
+              <>
+                <Lock className="w-3.5 h-3.5 text-amber-600" />
+                <span>Preview Published Locked Mode / معاينة مظهر المستخدم (مقفل)</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Role Notice Banner */}
+
       {!isAdmin && isAiStudio && (
         <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between text-xs text-amber-900 gap-3">
           <div className="flex items-center gap-2.5">
@@ -407,9 +454,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 <h3 className="font-bold text-slate-900 text-sm">General Corporate Info (بيانات المنشأة العامة)</h3>
               </div>
               {isFrozen ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                  <Lock className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Locked after publish / مقفل بعد النشر (تعديل عبر AI Studio فقط)</span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                  <Lock className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Corporate Details Locked / بيانات المنشأة معتمدة ومقفلة</span>
                 </span>
               ) : (
                 <div className="flex items-center gap-2">
@@ -652,9 +699,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             )}
 
             {isFrozen ? (
-              <div className="ml-auto flex items-center gap-2 text-xs font-bold text-amber-800 bg-amber-50 px-4 py-2.5 rounded-xl border border-amber-200">
-                <Lock className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Settings Locked after publish / مقفل بعد النشر (تعديل عبر AI Studio فقط)</span>
+              <div className="ml-auto flex items-center gap-2 text-xs font-bold text-slate-700 bg-slate-100 px-4 py-2.5 rounded-xl border border-slate-200">
+                <Lock className="w-4 h-4 text-slate-500 shrink-0" />
+                <span>Corporate Settings Locked / إعدادات المنشأة معتمدة ومقفلة</span>
               </div>
             ) : (
               <button
