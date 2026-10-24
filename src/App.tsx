@@ -11,11 +11,13 @@ import { QuotationsScreen } from './components/QuotationsScreen';
 import { ManualBillScreen } from './components/ManualBillScreen';
 import { LicenseRevenueScreen } from './components/LicenseRevenueScreen';
 import { InvoiceReceiptModal } from './components/InvoiceReceiptModal';
+import { ThermalReceipt } from './components/ThermalReceipt';
 import { PublicInvoiceView } from './components/PublicInvoiceView';
 import { SplashScreen } from './components/SplashScreen';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { BusinessProfile, Customer, InventoryItem, Invoice, UserRole } from './types';
 import { DEFAULT_BUSINESS_PROFILE } from './lib/sampleData';
+import { generateZatcaQrDataUrl } from './utils/zatca';
 import {
   seedInitialDataIfNeeded,
   getBusinessProfile,
@@ -61,6 +63,8 @@ export default function App() {
 
   // Active Receipt Modal
   const [activeInvoiceModal, setActiveInvoiceModal] = useState<Invoice | null>(null);
+  // Direct Print Invoice (triggers direct print on sale completion without showing popup window)
+  const [directPrintInvoice, setDirectPrintInvoice] = useState<Invoice | null>(null);
 
   // Animated Startup / Splash Screen State
   const [showSplash, setShowSplash] = useState<boolean>(true);
@@ -390,7 +394,7 @@ export default function App() {
             userRole={userRole}
             isLoadingInventory={isInventoryLoading}
             inventoryError={inventoryError}
-            onInvoiceCreated={(createdInvoice) => setActiveInvoiceModal(createdInvoice)}
+            onInvoiceCreated={(createdInvoice) => setDirectPrintInvoice(createdInvoice)}
             onNavigateToCustomers={() => setActiveTab('customers')}
           />
         )}
@@ -465,7 +469,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Invoice Receipt Modal Popup */}
+      {/* Invoice Receipt Modal Popup for viewing past invoices from history */}
       {activeInvoiceModal && (
         <InvoiceReceiptModal
           invoice={activeInvoiceModal}
@@ -474,8 +478,57 @@ export default function App() {
         />
       )}
 
+      {/* Direct Auto-Print Receipt for POS Sale Completion (No Popup Window!) */}
+      {directPrintInvoice && (
+        <DirectPrintContainer
+          invoice={directPrintInvoice}
+          businessProfile={businessProfile}
+          onFinish={() => setDirectPrintInvoice(null)}
+        />
+      )}
+
       {/* Offline Status Toast */}
       <OfflineIndicator />
+    </div>
+  );
+}
+
+// Helper component to trigger silent direct print on POS sale completion
+function DirectPrintContainer({
+  invoice,
+  businessProfile,
+  onFinish,
+}: {
+  invoice: Invoice;
+  businessProfile: BusinessProfile;
+  onFinish: () => void;
+}) {
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
+
+  useEffect(() => {
+    let isMounted = true;
+    generateZatcaQrDataUrl(invoice, { width: 180, margin: 1 }, businessProfile).then((url) => {
+      if (isMounted) {
+        setQrDataUrl(url || '');
+        setTimeout(() => {
+          window.print();
+          onFinish();
+        }, 120);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [invoice, businessProfile, onFinish]);
+
+  return (
+    <div className="hidden print:block fixed inset-0 bg-white pointer-events-none z-[9999]">
+      <ThermalReceipt
+        invoice={invoice}
+        businessProfile={businessProfile}
+        qrDataUrl={qrDataUrl}
+      />
     </div>
   );
 }

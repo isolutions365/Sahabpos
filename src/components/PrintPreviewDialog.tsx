@@ -199,7 +199,7 @@ export const PrintPreviewDialog: React.FC<PrintPreviewDialogProps> = ({ invoice,
           min-height: 0 !important;
           max-height: none !important;
           margin: ${isThermal ? '0 auto' : sheetMarginCSS} !important;
-          padding: ${isThermal ? '0 2mm' : '0'} !important;
+          padding: ${isThermal ? '0 1.5mm' : '0'} !important;
           border: none !important;
           box-shadow: none !important;
           filter: none !important;
@@ -215,9 +215,9 @@ export const PrintPreviewDialog: React.FC<PrintPreviewDialogProps> = ({ invoice,
           page-break-after: avoid !important;
           break-after: avoid !important;
           font-family: ${isThermal ? "'Courier New', Courier, monospace !important" : 'inherit'};
-          font-size: ${isThermal ? '11px !important' : 'inherit'};
+          font-size: ${isThermal ? '10px !important' : 'inherit'};
           font-weight: ${isThermal ? 'bold !important' : 'inherit'};
-          line-height: ${isThermal ? '1.6 !important' : 'inherit'};
+          line-height: ${isThermal ? '1.12 !important' : 'inherit'};
           -webkit-font-smoothing: ${isThermal ? 'none !important' : 'inherit'};
           -webkit-print-color-adjust: economy !important;
           print-color-adjust: economy !important;
@@ -239,6 +239,7 @@ export const PrintPreviewDialog: React.FC<PrintPreviewDialogProps> = ({ invoice,
           min-width: 0 !important;
           ${isThermal ? `
             font-family: 'Courier New', Courier, monospace !important;
+            line-height: 1.12 !important;
             -webkit-font-smoothing: none !important;
           ` : ''}
           -webkit-print-color-adjust: economy !important;
@@ -250,94 +251,108 @@ export const PrintPreviewDialog: React.FC<PrintPreviewDialogProps> = ({ invoice,
           text-align: center !important;
           white-space: normal !important;
           word-break: break-word !important;
-          font-size: 13px !important;
+          font-size: 12px !important;
           font-weight: bold !important;
-          padding-bottom: 1mm !important;
-          line-height: 1.6 !important;
+          padding-bottom: 0.2mm !important;
+          line-height: 1.15 !important;
+          margin: 0 !important;
         }
 
         /* B.8 Header block */
         #print-preview-sheet-wrapper .receipt-header-line {
-          padding-bottom: 1mm !important;
-          line-height: 1.5 !important;
+          padding-bottom: 0.2mm !important;
+          line-height: 1.1 !important;
           word-break: break-word !important;
+          margin: 0 !important;
         }
         #print-preview-sheet-wrapper .receipt-header-block {
-          padding-bottom: 2mm !important;
-          margin-bottom: 3mm !important;
+          padding-bottom: 0.5mm !important;
+          margin-bottom: 0.8mm !important;
         }
         #print-preview-sheet-wrapper .receipt-title-gap {
-          padding-top: 3mm !important;
-          margin-bottom: 2mm !important;
+          padding-top: 0.5mm !important;
+          margin-bottom: 0.8mm !important;
+          line-height: 1.15 !important;
         }
 
-        /* A.5 & B.3 Row layout: display:flex; justify-content:space-between; align-items:center; gap:1.5mm; line-height: 1.6; padding: var(--row-gap) 0; */
+        /* A.5 & B.3 Row layout: compact layout */
         #print-preview-sheet-wrapper .receipt-row,
         #print-preview-sheet-wrapper .flex.justify-between {
           display: flex !important;
           justify-content: space-between !important;
           align-items: center !important;
-          gap: 1.5mm !important;
+          gap: 1mm !important;
           width: 100% !important;
-          line-height: 1.6 !important;
-          padding: var(--row-gap, 1.5mm) 0 !important;
+          line-height: 1.12 !important;
+          padding: 0.2mm 0 !important;
           margin: 0 !important;
         }
 
-        /* Values par white-space: nowrap; font-size 10.5px */
+        /* Values par white-space: nowrap; font-size 10px */
         #print-preview-sheet-wrapper .receipt-row-value,
         #print-preview-sheet-wrapper .whitespace-nowrap,
         #print-preview-sheet-wrapper .flex.justify-between > span:last-child {
           white-space: nowrap !important;
           flex-shrink: 0 !important;
           text-align: right !important;
-          font-size: 10.5px !important;
+          font-size: 10px !important;
+          line-height: 1.12 !important;
         }
 
         /* B.5 Separators */
         #print-preview-sheet-wrapper .receipt-separator,
         #print-preview-sheet-wrapper .border-dashed {
-          padding-top: 2mm !important;
-          padding-bottom: 2mm !important;
+          padding-top: 0.5mm !important;
+          padding-bottom: 0.5mm !important;
+          margin-bottom: 0.5mm !important;
         }
 
         /* B.6 Item qty row */
         #print-preview-sheet-wrapper .receipt-item-qty-row {
-          padding-top: 1mm !important;
-          padding-bottom: 2.5mm !important;
+          padding-top: 0.2mm !important;
+          padding-bottom: 0.4mm !important;
+          line-height: 1.12 !important;
         }
 
         /* B.7 Totals */
         #print-preview-sheet-wrapper .receipt-total-row {
-          padding: 2mm 0 !important;
-          line-height: 1.5 !important;
+          padding: 0.3mm 0 !important;
+          line-height: 1.12 !important;
         }
         #print-preview-sheet-wrapper .receipt-grand-total {
-          padding: 3mm 0 2mm 0 !important;
-          font-size: 12.5px !important;
+          padding: 0.8mm 0 0.5mm 0 !important;
+          font-size: 11.5px !important;
           font-weight: 900 !important;
-          border-top: 2px solid #000000 !important;
+          line-height: 1.18 !important;
+          border-top: 1.5px solid #000000 !important;
         }
 
-        /* B.9 Arabic text: line-height: 1.8; direction: rtl; unicode-bidi: plaintext */
+        /* B.9 Arabic text: direction: rtl; unicode-bidi: plaintext */
         #print-preview-sheet-wrapper [dir="rtl"],
         #print-preview-sheet-wrapper .arabic-text {
           direction: rtl !important;
           unicode-bidi: plaintext !important;
-          line-height: 1.8 !important;
+          line-height: 1.2 !important;
           text-align: right !important;
         }
 
-        /* A.7 QR code: width 34mm, margin 2mm auto */
+        /* A.7 QR code: width 28mm, margin 0.5mm auto */
         #print-preview-sheet-wrapper .receipt-qr-wrapper,
         #print-preview-sheet-wrapper .receipt-qr-wrapper img {
-          max-width: 34mm !important;
-          max-height: 34mm !important;
-          width: 34mm !important;
-          height: 34mm !important;
-          margin: 2mm auto !important;
+          max-width: 28mm !important;
+          max-height: 28mm !important;
+          width: 26mm !important;
+          height: 26mm !important;
+          margin: 0.5mm auto 1mm auto !important;
           display: block !important;
         }
+
+        #print-preview-sheet-wrapper .bg-slate-50,
+        #print-preview-sheet-wrapper .bg-indigo-50,
+        #print-preview-sheet-wrapper .bg-slate-100 {
+          background-color: transparent !important;
+        }
+      }
 
         #print-preview-sheet-wrapper .bg-slate-50,
         #print-preview-sheet-wrapper .bg-indigo-50,
