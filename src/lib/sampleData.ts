@@ -3,8 +3,8 @@ import { BusinessProfile, Customer, InventoryItem } from '../types';
 export const DEFAULT_BUSINESS_PROFILE: BusinessProfile = {
   businessName: 'Sahaab Commercial Cities Est.',
   businessNameAr: 'البقالة سحاب المدن التجارية',
-  crNumber: '2050158575', // 10-digit Saudi CR Number
-  vatNumber: '310802395800003', // 15-digit ZATCA Tax Number
+  crNumber: '7029190803', // 10-digit Saudi CR Number
+  vatNumber: '3112939551900003', // 15-digit ZATCA Tax Number
   address: 'Khalidya Janubya AlDammam, Kingdom of Saudi Arabia',
   phone: '0580588437',
   currency: 'SAR',

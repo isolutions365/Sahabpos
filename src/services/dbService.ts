@@ -223,13 +223,13 @@ export async function getBusinessProfile(): Promise<BusinessProfile> {
       await setDoc(docRef, cleanUndefined(data), { merge: true });
     }
 
-    if (!data.vatNumber || data.vatNumber === '310987654300003') {
-      data.vatNumber = '310802395800003';
+    if (!data.vatNumber || data.vatNumber === '310987654300003' || data.vatNumber === '310802395800003') {
+      data.vatNumber = '3112939551900003';
       await setDoc(docRef, cleanUndefined(data), { merge: true });
     }
 
-    if (!data.crNumber || data.crNumber === '1010894521') {
-      data.crNumber = '2050158575';
+    if (!data.crNumber || data.crNumber === '1010894521' || data.crNumber === '2050158575') {
+      data.crNumber = '7029190803';
       await setDoc(docRef, cleanUndefined(data), { merge: true });
     }
 
