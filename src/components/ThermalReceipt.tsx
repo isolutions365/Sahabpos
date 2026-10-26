@@ -29,7 +29,7 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ invoice, busines
           style={{ textAlign: 'center' }}
           className="receipt-company-name arabic-text font-sans font-black text-xs text-center leading-tight text-black [word-break:normal] [overflow-wrap:break-word] [text-wrap:balance] max-w-full block mx-auto py-0.2"
         >
-          {(activeProfile?.businessNameAr || invoice.businessProfile.businessNameAr)?.replace(/بقالة/g, 'تموينات')}
+          {activeProfile?.businessNameAr || invoice.businessProfile.businessNameAr}
         </h2>
         <p className="receipt-company-name font-sans font-extrabold text-black text-[11px] mt-0.2 leading-tight text-center">
           {activeProfile?.businessName || invoice.businessProfile.businessName}

@@ -2,11 +2,11 @@ import { BusinessProfile, Customer, InventoryItem } from '../types';
 
 export const DEFAULT_BUSINESS_PROFILE: BusinessProfile = {
   businessName: 'Sahaab Commercial Cities Est.',
-  businessNameAr: 'سحاب المدن التجارية',
-  crNumber: '1010894521', // 10-digit Saudi CR Number
-  vatNumber: '310987654300003', // 15-digit ZATCA Tax Number
+  businessNameAr: 'البقالة سحاب المدن التجارية',
+  crNumber: '2050158575', // 10-digit Saudi CR Number
+  vatNumber: '310802395800003', // 15-digit ZATCA Tax Number
   address: 'Khalidya Janubya AlDammam, Kingdom of Saudi Arabia',
-  phone: '+966 11 456 7890',
+  phone: '0580588437',
   currency: 'SAR',
   defaultVatRate: 15,
   publicSiteDomain: 'sahab-pos.web.app',

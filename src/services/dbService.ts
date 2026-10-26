@@ -213,14 +213,28 @@ export async function getBusinessProfile(): Promise<BusinessProfile> {
       data = { ...DEFAULT_BUSINESS_PROFILE };
     }
 
-    // Auto-migrate legacy name if containing 'بقالة' to 'تموينات'
-    if (data.businessNameAr && data.businessNameAr.includes('بقالة')) {
-      data.businessNameAr = data.businessNameAr.replace(/بقالة/g, 'تموينات');
+    if (!data.businessNameAr || data.businessNameAr === 'سحاب المدن التجارية' || data.businessNameAr.includes('تموينات')) {
+      data.businessNameAr = 'البقالة سحاب المدن التجارية';
       await setDoc(docRef, cleanUndefined(data), { merge: true });
     }
 
     if (!data.address || data.address === 'Riyadh, Kingdom of Saudi Arabia') {
       data.address = DEFAULT_BUSINESS_PROFILE.address;
+      await setDoc(docRef, cleanUndefined(data), { merge: true });
+    }
+
+    if (!data.vatNumber || data.vatNumber === '310987654300003') {
+      data.vatNumber = '310802395800003';
+      await setDoc(docRef, cleanUndefined(data), { merge: true });
+    }
+
+    if (!data.crNumber || data.crNumber === '1010894521') {
+      data.crNumber = '2050158575';
+      await setDoc(docRef, cleanUndefined(data), { merge: true });
+    }
+
+    if (!data.phone || data.phone === '+966 11 456 7890') {
+      data.phone = '0580588437';
       await setDoc(docRef, cleanUndefined(data), { merge: true });
     }
 
