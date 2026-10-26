@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Printer, Download, CheckCircle, ExternalLink, FileText, QrCode as QrIcon, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
-import { Invoice, PrintFormat, BusinessProfile } from '../types';
+import { X, Printer, Download, CheckCircle, ExternalLink, FileText, QrCode as QrIcon, ShieldCheck, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
+import { Invoice, PrintFormat, BusinessProfile, UserRole } from '../types';
 import { PrintPreviewDialog } from './PrintPreviewDialog';
 import { ThermalReceipt } from './ThermalReceipt';
-import { formatPublicInvoiceUrl } from '../services/dbService';
+import { formatPublicInvoiceUrl, updateInvoiceDate } from '../services/dbService';
 import { generateZatcaQrDataUrl, generateZatcaTlvBase64, decodeZatcaTlvBase64, ZatcaQrFields } from '../utils/zatca';
 import { INVOICE_UI_FLAGS } from '../config/uiFlags';
 
@@ -13,10 +13,27 @@ interface InvoiceReceiptModalProps {
   businessProfile?: BusinessProfile;
   defaultFormat?: PrintFormat;
   autoPrint?: boolean;
+  userRole?: UserRole;
 }
 
-export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoice, onClose, businessProfile, defaultFormat = 'THERMAL_80MM', autoPrint = false }) => {
-  const isManualBill = invoice.invoiceNumber.startsWith('INV-M-');
+export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({
+  invoice,
+  onClose,
+  businessProfile,
+  defaultFormat = 'THERMAL_80MM',
+  autoPrint = false,
+  userRole = 'ADMIN',
+}) => {
+  const [currentInvoice, setCurrentInvoice] = useState<Invoice>(invoice);
+  const [isEditingDate, setIsEditingDate] = useState(false);
+  const [editDateStr, setEditDateStr] = useState('');
+  const [isSavingDate, setIsSavingDate] = useState(false);
+
+  useEffect(() => {
+    setCurrentInvoice(invoice);
+  }, [invoice]);
+
+  const isManualBill = currentInvoice.invoiceNumber.startsWith('INV-M-');
   const [printFormat, setPrintFormat] = useState<PrintFormat>(isManualBill ? 'A4_FULL' : 'THERMAL_80MM');
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [zatcaBase64, setZatcaBase64] = useState<string>('');
@@ -24,21 +41,21 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
   const [showZatcaInspector, setShowZatcaInspector] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-  const activeProfile = businessProfile || invoice.businessProfile;
-  const publicInvoiceUrl = formatPublicInvoiceUrl(invoice.id, activeProfile);
+  const activeProfile = businessProfile || currentInvoice.businessProfile;
+  const publicInvoiceUrl = formatPublicInvoiceUrl(currentInvoice.id, activeProfile);
 
   useEffect(() => {
     let isMounted = true;
     
     // Generate Base64 TLV payload
-    const base64Payload = generateZatcaTlvBase64(invoice, activeProfile);
+    const base64Payload = generateZatcaTlvBase64(currentInvoice, activeProfile);
     if (isMounted) {
       setZatcaBase64(base64Payload);
       setZatcaFields(decodeZatcaTlvBase64(base64Payload));
     }
 
     // Render ZATCA Phase 1 Base64 TLV QR Code
-    generateZatcaQrDataUrl(invoice, { width: 180, margin: 1 }, activeProfile).then((url) => {
+    generateZatcaQrDataUrl(currentInvoice, { width: 180, margin: 1 }, activeProfile).then((url) => {
       if (isMounted && url) {
         setQrDataUrl(url);
       }
@@ -47,7 +64,7 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
     return () => {
       isMounted = false;
     };
-  }, [invoice, activeProfile]);
+  }, [currentInvoice, activeProfile]);
 
   // Auto-print when autoPrint is true and QR code is ready
   useEffect(() => {
@@ -109,6 +126,38 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
     });
   };
 
+  const handleStartEditDate = () => {
+    try {
+      const d = new Date(currentInvoice.createdAt);
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      setEditDateStr(d.toISOString().slice(0, 16));
+    } catch {
+      setEditDateStr('');
+    }
+    setIsEditingDate(true);
+  };
+
+  const handleSaveDate = async () => {
+    if (!editDateStr) return;
+    setIsSavingDate(true);
+    try {
+      const parsed = new Date(editDateStr);
+      if (isNaN(parsed.getTime())) {
+        alert('Invalid date/time selected / تاريخ غير صالح');
+        return;
+      }
+      const newIso = parsed.toISOString();
+      await updateInvoiceDate(currentInvoice.id, newIso);
+      setCurrentInvoice((prev) => ({ ...prev, createdAt: newIso }));
+      setIsEditingDate(false);
+    } catch (err) {
+      console.error('Failed to update invoice date:', err);
+      alert('Failed to update invoice date. Please try again.');
+    } finally {
+      setIsSavingDate(false);
+    }
+  };
+
   return (
     <>
       <div className={`fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto ${isPreviewOpen ? 'print:hidden no-print hidden' : 'print:p-0 print:m-0 print:bg-white print:static print:w-full'}`}>
@@ -119,11 +168,46 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
             <CheckCircle className="w-5 h-5 text-indigo-400" />
             <div>
               <h3 className="font-bold text-base text-slate-100">
-                {invoice.customTitle || `Invoice #${invoice.invoiceNumber}`}
+                {currentInvoice.customTitle || `Invoice #${currentInvoice.invoiceNumber}`}
               </h3>
-              <p className="text-xs text-slate-400">
-                Issued: {new Date(invoice.createdAt).toLocaleString('en-US')}
-              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                <p className="text-xs text-slate-400">
+                  Issued: {new Date(currentInvoice.createdAt).toLocaleString('en-US')}
+                </p>
+                {(userRole === 'ADMIN' || userRole === 'MANAGER') && !isEditingDate && (
+                  <button
+                    onClick={handleStartEditDate}
+                    className="text-[11px] text-indigo-400 hover:text-indigo-300 underline font-semibold flex items-center gap-1 cursor-pointer"
+                    title="Edit Invoice Date (Admin)"
+                  >
+                    <Calendar className="w-3 h-3" />
+                    Change Date / تعديل التاريخ
+                  </button>
+                )}
+              </div>
+              {isEditingDate && (
+                <div className="flex items-center gap-2 mt-2 bg-slate-800 p-2 rounded-xl border border-slate-700 shadow-md">
+                  <input
+                    type="datetime-local"
+                    value={editDateStr}
+                    onChange={(e) => setEditDateStr(e.target.value)}
+                    className="text-xs p-1.5 bg-slate-900 text-white rounded-lg border border-slate-600 font-mono focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <button
+                    onClick={handleSaveDate}
+                    disabled={isSavingDate}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg cursor-pointer"
+                  >
+                    {isSavingDate ? 'Saving...' : 'Save / حفظ'}
+                  </button>
+                  <button
+                    onClick={() => setIsEditingDate(false)}
+                    className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -235,7 +319,7 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
           {printFormat === 'THERMAL_80MM' ? (
             /* THERMAL 80MM RECEIPT FORMAT */
             <ThermalReceipt
-              invoice={invoice}
+              invoice={currentInvoice}
               businessProfile={activeProfile}
               qrDataUrl={qrDataUrl}
             />
@@ -245,13 +329,13 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
               id="printable-a4"
               className="bg-white p-8 pb-20 text-slate-900 shadow-xl border border-slate-200 rounded-none w-full max-w-[800px] font-sans text-xs print:shadow-none print:border-none print:w-full print:p-0 print:m-0 relative"
             >
-              {invoice.invoiceStatus === 'Cancelled' && (
+              {currentInvoice.invoiceStatus === 'Cancelled' && (
                 <div className="bg-rose-600 text-white font-extrabold text-center py-2 px-4 rounded-xl mb-4 tracking-widest text-sm uppercase shadow">
                   *** INVOICE CANCELLED / فاتورة ملغاة ***
-                  {invoice.cancelledAt && (
+                  {currentInvoice.cancelledAt && (
                     <span className="block text-[10px] font-normal normal-case opacity-90">
-                      Cancelled on {new Date(invoice.cancelledAt).toLocaleString()} by {invoice.cancelledBy || 'Admin'}
-                      {invoice.cancellationReason ? ` (${invoice.cancellationReason})` : ''}
+                      Cancelled on {new Date(currentInvoice.cancelledAt).toLocaleString()} by {currentInvoice.cancelledBy || 'Admin'}
+                      {currentInvoice.cancellationReason ? ` (${currentInvoice.cancellationReason})` : ''}
                     </span>
                   )}
                 </div>
@@ -259,9 +343,9 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
               {/* Header Banner */}
               <div className="flex justify-between items-start border-b-2 border-indigo-700 pb-4 mb-6">
                 <div className="flex items-start gap-3.5">
-                  {invoice.businessProfile.logo ? (
+                  {currentInvoice.businessProfile.logo ? (
                     <img
-                      src={invoice.businessProfile.logo}
+                      src={currentInvoice.businessProfile.logo}
                       alt="Logo"
                       className="w-12 h-12 object-contain bg-white border border-slate-200 rounded-xl p-1 shrink-0"
                       referrerPolicy="no-referrer"
@@ -276,15 +360,15 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
                       dir="rtl"
                       className="font-sans font-extrabold text-lg sm:text-xl text-slate-900 leading-snug [word-break:normal] [overflow-wrap:break-word] [text-wrap:balance]"
                     >
-                      {(activeProfile?.businessNameAr || invoice.businessProfile.businessNameAr)?.replace(/بقالة/g, 'تموينات')}
+                      {(activeProfile?.businessNameAr || currentInvoice.businessProfile.businessNameAr)?.replace(/بقالة/g, 'تموينات')}
                     </h1>
                     <p className="text-sm font-semibold text-slate-700">
-                      {invoice.businessProfile.businessName}
+                      {currentInvoice.businessProfile.businessName}
                     </p>
                     <div className="mt-2 text-xs text-slate-600 space-y-0.5">
-                      <p><span className="font-semibold">CR Number / رقم السجل التجاري:</span> {invoice.businessProfile.crNumber}</p>
-                      <p><span className="font-semibold">VAT Number / الرقم الضريبي:</span> {invoice.businessProfile.vatNumber}</p>
-                      <p>{invoice.businessProfile.address} | Tel: {invoice.businessProfile.phone}</p>
+                      <p><span className="font-semibold">CR Number / رقم السجل التجاري:</span> {currentInvoice.businessProfile.crNumber}</p>
+                      <p><span className="font-semibold">VAT Number / الرقم الضريبي:</span> {currentInvoice.businessProfile.vatNumber}</p>
+                      <p>{currentInvoice.businessProfile.address} | Tel: {currentInvoice.businessProfile.phone}</p>
                     </div>
                   </div>
                 </div>
@@ -295,10 +379,10 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
                       TAX INVOICE / فاتورة ضريبية
                     </h2>
                     <p className="text-xs font-bold text-slate-800 mt-1">
-                      #{invoice.invoiceNumber}
+                      #{currentInvoice.invoiceNumber}
                     </p>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      {new Date(invoice.createdAt).toLocaleDateString()}
+                      {new Date(currentInvoice.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -317,20 +401,20 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
                   <h3 className="font-bold text-xs uppercase text-slate-500 mb-2 border-b pb-1">
                     Customer Details / بيانات العميل
                   </h3>
-                  {invoice.customer ? (
+                  {currentInvoice.customer ? (
                     <div className="space-y-1 text-xs">
-                      <p className="font-bold text-slate-900">{invoice.customer.name}</p>
-                      {invoice.customer.taxNumber && (
-                        <p><span className="text-slate-500">VAT ID / الرقم الضريبي:</span> {invoice.customer.taxNumber}</p>
+                      <p className="font-bold text-slate-900">{currentInvoice.customer.name}</p>
+                      {currentInvoice.customer.taxNumber && (
+                        <p><span className="text-slate-500">VAT ID / الرقم الضريبي:</span> {currentInvoice.customer.taxNumber}</p>
                       )}
-                      {invoice.customer.crNumber && (
-                        <p><span className="text-slate-500">CR No / السجل التجاري:</span> {invoice.customer.crNumber}</p>
+                      {currentInvoice.customer.crNumber && (
+                        <p><span className="text-slate-500">CR No / السجل التجاري:</span> {currentInvoice.customer.crNumber}</p>
                       )}
-                      {invoice.customer.licenseNumber && (
-                        <p><span className="text-slate-500">License / رقم الترخيص:</span> {invoice.customer.licenseNumber}</p>
+                      {currentInvoice.customer.licenseNumber && (
+                        <p><span className="text-slate-500">License / رقم الترخيص:</span> {currentInvoice.customer.licenseNumber}</p>
                       )}
-                      {invoice.customer.phone && (
-                        <p><span className="text-slate-500">Phone:</span> {invoice.customer.phone}</p>
+                      {currentInvoice.customer.phone && (
+                        <p><span className="text-slate-500">Phone:</span> {currentInvoice.customer.phone}</p>
                       )}
                     </div>
                   ) : (
@@ -343,10 +427,10 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
                     Invoice Summary / ملخص الفاتورة
                   </h3>
                   <div className="space-y-1 text-xs">
-                    <p><span className="text-slate-500">Date & Time:</span> {new Date(invoice.createdAt).toLocaleString()}</p>
-                    <p><span className="text-slate-500">Payment Method:</span> <span className="font-bold text-indigo-800">{invoice.paymentMethod}</span></p>
-                    <p><span className="text-slate-500">Status:</span> <span className={`font-semibold ${invoice.paymentMethod === 'CREDIT_BAQAYA' || invoice.paymentStatus === 'UNPAID' ? 'text-amber-700 font-extrabold' : 'text-indigo-700'}`}>{invoice.paymentMethod === 'CREDIT_BAQAYA' || invoice.paymentStatus === 'UNPAID' ? 'CREDIT' : 'PAID'}</span></p>
-                    <p><span className="text-slate-500">Issued By:</span> {invoice.cashierRole}</p>
+                    <p><span className="text-slate-500">Date & Time:</span> {new Date(currentInvoice.createdAt).toLocaleString()}</p>
+                    <p><span className="text-slate-500">Payment Method:</span> <span className="font-bold text-indigo-800">{currentInvoice.paymentMethod}</span></p>
+                    <p><span className="text-slate-500">Status:</span> <span className={`font-semibold ${currentInvoice.paymentMethod === 'CREDIT_BAQAYA' || currentInvoice.paymentStatus === 'UNPAID' ? 'text-amber-700 font-extrabold' : 'text-indigo-700'}`}>{currentInvoice.paymentMethod === 'CREDIT_BAQAYA' || currentInvoice.paymentStatus === 'UNPAID' ? 'CREDIT' : 'PAID'}</span></p>
+                    <p><span className="text-slate-500">Issued By:</span> {currentInvoice.cashierRole}</p>
                   </div>
                 </div>
               </div>
@@ -363,7 +447,7 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({ invoic
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 border-b border-slate-300">
-                  {invoice.items.map((cartItem, idx) => (
+                  {currentInvoice.items.map((cartItem, idx) => (
                     <tr key={idx} className="hover:bg-slate-50">
                       <td className="p-2.5 text-slate-500">{idx + 1}</td>
                       <td className="p-2.5">

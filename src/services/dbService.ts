@@ -694,8 +694,8 @@ export function formatPublicInvoiceUrl(invoiceId: string, profile?: { publicSite
   return `https://sahaab-pos.web.app/invoice/${invoiceId}`;
 }
 
-export async function createInvoice(invoiceData: Omit<Invoice, 'id' | 'createdAt'>, skipStockDeduction: boolean = false): Promise<string> {
-  const now = new Date().toISOString();
+export async function createInvoice(invoiceData: Omit<Invoice, 'id'> & { createdAt?: string }, skipStockDeduction: boolean = false): Promise<string> {
+  const now = (invoiceData as any).createdAt || new Date().toISOString();
   
   // 1. Generate unique document reference & ID client-side instantly
   const newDocRef = doc(collection(db, COLLECTION_INVOICES));
@@ -765,6 +765,28 @@ export async function createInvoice(invoiceData: Omit<Invoice, 'id' | 'createdAt
 export async function updateInvoice(id: string, updates: Partial<Invoice>): Promise<void> {
   const docRef = doc(db, COLLECTION_INVOICES, id);
   await updateDoc(docRef, cleanUndefined(updates));
+}
+
+export async function updateInvoiceDate(id: string, newCreatedAt: string): Promise<void> {
+  if (!id) return;
+  try {
+    const docRef = doc(db, COLLECTION_INVOICES, id);
+    await updateDoc(docRef, { createdAt: newCreatedAt });
+  } catch (err) {
+    console.warn(`Notice updating invoice date for ${id}:`, err);
+  }
+
+  try {
+    const existingStr = localStorage.getItem('cached_invoices');
+    if (existingStr) {
+      const existingInvoices: Invoice[] = JSON.parse(existingStr);
+      const idx = existingInvoices.findIndex((inv) => inv.id === id);
+      if (idx !== -1) {
+        existingInvoices[idx].createdAt = newCreatedAt;
+        localStorage.setItem('cached_invoices', JSON.stringify(existingInvoices));
+      }
+    }
+  } catch {}
 }
 
 export async function cancelInvoice(

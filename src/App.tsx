@@ -477,6 +477,7 @@ export default function App() {
           invoice={activeInvoiceModal}
           onClose={() => setActiveInvoiceModal(null)}
           businessProfile={businessProfile}
+          userRole={userRole}
         />
       )}
 

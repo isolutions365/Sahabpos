@@ -21,6 +21,7 @@ import {
   Zap,
   CheckCircle2,
   Camera,
+  Calendar,
 } from 'lucide-react';
 import { BusinessProfile, CartItem, Customer, InventoryItem, Invoice, UserRole } from '../types';
 import { createInvoice } from '../services/dbService';
@@ -83,6 +84,14 @@ export const PosScreen: React.FC<PosScreenProps> = ({
   // Customize Invoice Title
   const [isCustomTitleEnabled, setIsCustomTitleEnabled] = useState(false);
   const [customTitle, setCustomTitle] = useState('');
+
+  // Admin Custom Date / Time Override Option
+  const [isCustomDateEnabled, setIsCustomDateEnabled] = useState(false);
+  const [customInvoiceDateTime, setCustomInvoiceDateTime] = useState<string>(() => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  });
 
   // Weight Entry Modal State
   const [weightModalItem, setWeightModalItem] = useState<InventoryItem | null>(null);
@@ -554,7 +563,17 @@ export const PosScreen: React.FC<PosScreenProps> = ({
         isWalkInVal = true;
       }
 
-      const invoiceData: Omit<Invoice, 'id' | 'createdAt'> = {
+      let invoiceCreatedAt = new Date().toISOString();
+      if ((userRole === 'ADMIN' || userRole === 'MANAGER') && isCustomDateEnabled && customInvoiceDateTime) {
+        try {
+          const parsed = new Date(customInvoiceDateTime);
+          if (!isNaN(parsed.getTime())) {
+            invoiceCreatedAt = parsed.toISOString();
+          }
+        } catch {}
+      }
+
+      const invoiceData: Omit<Invoice, 'id'> & { createdAt?: string } = {
         invoiceNumber: invNum,
         customTitle: isCustomTitleEnabled && customTitle.trim() ? customTitle.trim() : undefined,
         businessProfile,
@@ -568,6 +587,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
         paymentStatus: paymentMethod === 'CREDIT_BAQAYA' ? 'UNPAID' : 'PAID',
         cashierRole: userRole,
         invoiceStatus: 'Active',
+        createdAt: invoiceCreatedAt,
       };
 
       // 12-second timeout safety guard
@@ -582,7 +602,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
       const createdInvoice: Invoice = {
         ...invoiceData,
         id: newId,
-        createdAt: new Date().toISOString(),
+        createdAt: invoiceCreatedAt,
         publicUrl: `https://sahaab-pos.web.app/invoice/${newId}`,
       };
 
@@ -590,6 +610,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
       setCart([]);
       setIsCustomTitleEnabled(false);
       setCustomTitle('');
+      setIsCustomDateEnabled(false);
       setSelectedCustomer(null);
       setCustomerType('WALK_IN');
       setCustomCustomerName('');
@@ -1182,6 +1203,38 @@ export const PosScreen: React.FC<PosScreenProps> = ({
                       onChange={(e) => setCustomTitle(e.target.value)}
                       className="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#4338CA]"
                     />
+                  )}
+                </div>
+              )}
+
+              {/* Admin Custom Invoice Date / Time Override */}
+              {(userRole === 'ADMIN' || userRole === 'MANAGER') && (
+                <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isCustomDateEnabled}
+                        onChange={(e) => setIsCustomDateEnabled(e.target.checked)}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                      />
+                      <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Change Invoice Date (Admin) / تاريخ الفاتورة</span>
+                    </label>
+                  </div>
+
+                  {isCustomDateEnabled && (
+                    <div className="pt-1 space-y-1">
+                      <input
+                        type="datetime-local"
+                        value={customInvoiceDateTime}
+                        onChange={(e) => setCustomInvoiceDateTime(e.target.value)}
+                        className="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#4338CA] font-mono text-slate-900 font-bold"
+                      />
+                      <p className="text-[10px] text-slate-500 leading-tight">
+                        Selected date & time will be saved on the invoice, printed on receipts, and encoded in the ZATCA QR code.
+                      </p>
+                    </div>
                   )}
                 </div>
               )}
