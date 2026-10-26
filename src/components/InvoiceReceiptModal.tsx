@@ -360,7 +360,7 @@ export const InvoiceReceiptModal: React.FC<InvoiceReceiptModalProps> = ({
                       dir="rtl"
                       className="font-sans font-extrabold text-lg sm:text-xl text-slate-900 leading-snug [word-break:normal] [overflow-wrap:break-word] [text-wrap:balance]"
                     >
-                      {activeProfile?.businessNameAr || currentInvoice.businessProfile.businessNameAr}
+                      {(activeProfile?.businessNameAr || currentInvoice.businessProfile.businessNameAr || 'البقالة سحاب المدن التجارية').replace(/التموينات|تموينات/g, 'البقالة')}
                     </h1>
                     <p className="text-sm font-semibold text-slate-700">
                       {currentInvoice.businessProfile.businessName}

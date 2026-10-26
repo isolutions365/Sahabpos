@@ -176,11 +176,13 @@
   }
 
   #printable-receipt [dir="rtl"],
-  #printable-receipt .arabic-text {
+  #printable-receipt .arabic-text,
+  #printable-receipt .receipt-company-name {
+    font-family: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif !important;
     direction: rtl !important;
     unicode-bidi: plaintext !important;
     line-height: 1.2 !important;
-    text-align: right !important;
+    text-align: center !important;
   }
 
   #printable-receipt .receipt-single-footer {
